@@ -1,0 +1,14 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+{% if reg_type=="api" %}<div class="form">{% endif %}
+<h1>This {{reg_type}} is {% if new_user %}now {% endif %}registered</h1>
+{% if reg_type=="api" %}
+<label for="apikey">API key</label><input type="text" value="{{apikey}}" name="apikey" width="20" /><br />
+<label for="secret">API secret</label><input type="text" value="{{secret}}" name="secret" width="20" />
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

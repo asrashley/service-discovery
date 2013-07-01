@@ -1,0 +1,213 @@
+@import "boilerplate";
+@import "prefixer";
+
+@blue: #43a1f7;
+@lightGrey: #ddd;
+
+body {
+  font-family: "Lucida Grande", Helvetica, Arial, sans-serif;
+  margin: 0;
+	padding: 1em;
+	.gradientH3(black, #335363, 50, black);
+}
+
+header {
+	width: 100%;
+	height: 4em;
+	padding: 0;
+	margin-bottom: 2em;
+	font-size: 1.25em;
+	font-size: 1.25rem;
+	position: relative;
+	#logo {
+		width: 9.5em;
+		height: 100%;
+		font-family: 'Comfortaa', cursive;
+		display: inline-block;
+		font-size: 3em;
+		color: @blue;
+	}
+	.breadcrumbs {
+		position: absolute;
+		top: 1em;
+		color: white;
+	}
+	.title {
+		display: inline-block;
+		color: @blue;
+		position: relative;
+		top: 0.25em;
+		padding: 0;
+		text-align: left;
+		border-radius: 0.2em;
+		&:before {
+			content: ">";
+		}
+	}
+}
+
+a {
+	text-decoration: none;
+	color: inherit;
+}
+
+#content {
+	padding: 0.5em 1em;
+	h1 {
+	  color: #ddd;
+	  font-size: 2em;
+	}
+}
+
+.button {
+  @width: 16em;
+  margin: 1em 0;
+  user-select: none;
+  display: block;
+  text-decoration: none;
+  background: #43a1f7;
+  /*background: linear-gradient(top, #43a1f7 0%, #377ad0 100%);*/
+  .gradientV(#333, #ddd);
+  /*border: 1px solid #2e70c4;*/
+  .border-radius(0.2em);
+  font-weight: bold;
+  color: #eee;
+  padding: 3px 10px 5px 10px;
+  text-align: center;
+	font-size: 1.5em;
+	width:@width;
+	position: relative;
+	left: 50%;
+	margin-left: -(@width/2);
+}
+.button:hover,
+.button.hover {
+  /*background: darker;*/
+  /*background: linear-gradient(top, #43a1f7 0%, #2e70c4 100%);*/
+  color: @lightGrey; /* #43a1f7; */
+  border: 1px solid #2e70c4;
+  cursor: pointer;
+  text-shadow: 0 -1px 1px #2c6bbb;
+}
+.button:active,
+.button.active {
+  background: #2e70c4;
+  border: 1px solid #2e70c4;
+  border-bottom: 1px solid #2861aa;
+  text-shadow: 0 -1px 1px #2b67b5;
+}
+.button:focus,
+.button.focus {
+  outline: none;
+  box-shadow: 0 1px 0 0 rgba(255,255,255,0.4), 0 0 4px 0 #377ad0;
+}
+
+#subpage {
+	display: none;
+}
+
+.form {
+	border:2px solid #333;
+	padding:2em;
+	margin-left: auto;
+	margin-right: auto;
+	border-radius:0.75em;
+	background-color: #eee;
+	overflow-x:hidden;
+  width: 35em;
+  label {
+    width: 8em;
+    display: inline-block;
+  }
+  h1 {
+    color: black !important;
+  }
+  input {
+    margin-top: 1em;
+    width: 20em;
+    color: black;
+  }
+}
+#pairingdatabase {
+	td {
+		padding: 0 0.5em;
+	}
+	.puid {
+		font-size: 0.7em;
+	}
+	.username {
+		font-weight: bold;
+	}
+}
+#apiregistration {
+  min-height: 22em;
+  width:40em;
+  input {
+    width: 35em;
+  }
+  .select2-container, .service-select {
+    width: 30em;
+  }
+}
+#subpage.ready {
+	display: block;
+}
+
+.hidden {
+	display: none;
+}
+.registered {
+	opacity: 0;
+	transition-property: opacity;
+	transition-delay: 1s;
+	a {
+		display: none;
+	}
+}
+.ready .registered {
+	opacity: 1;
+	a {
+		display: inline;
+	}
+}
+
+#debug {
+  display: none;
+}
+
+#user {
+  position: absolute;
+  right: 2em;
+  top: 0.5em;
+  color: @blue;
+  .login, .logout {
+    font-size: 80%;
+    margin-left: 1em;
+    color: @blue;
+    text-decoration: underline;
+  }
+}
+
+#progress{
+  @pwidth: 10em;
+  progress {
+    width: pwidth;
+  }
+  .percent {
+    position: relative;
+    left: -(@pwidth/2);
+  }
+}
+
+@media only screen and (min-width: 40em) {
+	#chat,
+	#nickname,
+	#messages,
+	#connecting {
+  		width: 40em;
+	}
+	#remotecontrol {
+		margin-left: auto;
+		margin-right: auto;
+	}
+}

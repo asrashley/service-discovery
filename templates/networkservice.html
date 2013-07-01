@@ -1,0 +1,57 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+{% if channel_token %}
+<div id="progress" class="form"></div>
+{% else %}
+<form id="networkservice" class="form" method="post" enctype="multipart/form-data" action="{{upload_url}}">
+	<h1>Upload service description</h1>
+	<p>Use this page to upload a service list from the IANA service name directory.</p>
+		<label for="description">File</label><input type="file" name="file"/><br />
+		<label for="wipe">Wipe existing database?</label><input type="checkbox" name="wipe"/>
+		<input type="submit" name="submit" value="Upload" />
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if channel_token %}
+<script type="text/javascript" src="/js/jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
+<script type="text/javascript">
+$(document).ready(function(){
+	'use strict';
+	var channel = new goog.appengine.Channel("{{channel_token}}");
+	var socket = channel.open();
+	var numLines=0;
+    //socket.onopen = onOpened;
+    socket.onmessage = function(msg){
+    	var p, data = JSON.parse(msg.data);
+    	if(data.num_contacts){
+			p = $('<progress>', {value:0, max:data.num_lines});
+			$('#progress').empty().append(p);
+			$('#progress').append($('<span class="percent">0%</span>'));
+    		p = $('<p>').text('Found '+data.num_contacts+' contacts');
+			$('#progress').append(p);
+    		p = $('<p>').html('Found <span id="num_services">0</span> services');
+			$('#progress').append(p);
+			numLines = data.num_lines;
+    	}
+    	if(data.service_line){
+    		$('#progress progress').attr('value',data.service_line);
+    		if(numLines>0){
+    			$('#progress .percent').text(Math.floor(100*data.service_line/numLines));
+    		}
+    		$('#num_services').text(data.num_services);
+    		if(data.service_line==numLines){
+	    		p = $('<p>', {'class':'done'}).html('Done');
+				$('#progress').append(p);
+    		}
+    	}
+    };
+    //socket.onerror = onError;
+    //socket.onclose = onClose;
+})
+</script>
+{% endif %}
+{% endblock %}

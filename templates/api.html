@@ -1,0 +1,80 @@
+{% extends 'layout.html' %}
+{% block extraheaders %}
+        <link rel="stylesheet" href="/css/select2.css">
+{% endblock %}
+
+{% block content %}
+<form id="apiregistration" class="form" method="post" action="">
+	<h1>Request an API key</h1>
+	<p>To be able to request an API key, you need to provide the following
+		information.</p>
+		<label for="service">Service</label>
+		<input type="hidden" name="service" id="id_service" />
+		<!-- <select name="service" data-placeholder="Choose a service..." id="id_service" class="chzn-select">
+			<option value=""></option>
+			{% for srv in services %}
+			<option value="_{{srv.name}}._{{srv.protocol}}">{{srv.description}} ({{srv.protocol.upper()}}{% if srv.port %} port {{srv.port}}{% endif %})</option>
+			{% endfor %}
+		</select>--><br />
+		<label for="description">API description</label><input type="text" name="description" /><br />
+		<input type="submit" name="submit" value="Request API key" />
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript" src="/js/jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="/js/select2.js"></script>
+<script type="text/javascript">
+$(document).ready(function(){
+	'use strict';
+	/* $('.chzn-select').chosen({no_results_text:'Oops, nothing found!'}); */
+ 	$("#id_service").select2({
+            placeholder: "Choose a service...",
+            minimumInputLength: 3,
+            ajax: {
+                url: "{{ajax_url}}",
+                containerCssClass:'service-select',
+                dataType: 'json',
+                data: function (term, page) {
+                    return {
+                        q: term, // search term
+                        page_limit: 10,
+                        page: page,
+                        apikey: "{{ajax_key}}"
+                    };
+                },
+                results: function (data, page) {
+                    var i, item, rv = {results: data.services};
+                    for(i=0; i<data.services.length; ++i){
+                    	item = data.services[i];
+                    	rv.results[i].text = item.description+' ('+item.protocol.toUpperCase();
+		            	if(item.port){
+            				rv.results[i].text += ' port '+item.port;
+            			}
+            			rv.results[i].text += ')';
+            			rv.results[i].id = ['_', item.name, '._', item.protocol].join('');
+                    }
+                    return rv;
+                }
+            }
+            /*formatResult: function(item){
+            	var markup = '<p class="result">'+item.description+' ('+item.protocol.toUpperCase();
+            	if(item.port){
+            		markup += ' port '+item.port;
+            	}
+            	markup += ')</p>';
+            	return markup;
+            },
+			id: function(item){
+				return ['_', item.name, '._', item.protocol].join('');
+            },
+            formatSelection: function(item){
+				return ['_', item.name, '._', item.protocol].join('');
+            },
+            escapeMarkup: function (m) {
+            	return m;
+            }*/
+        });
+});
+</script>
+{% endblock %}

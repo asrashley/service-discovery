@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
+<!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
+<!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+	    <title>{{ title }}</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width">
+        <link href='http://fonts.googleapis.com/css?family=Comfortaa:700' rel='stylesheet' type='text/css'>
+        <link rel="stylesheet" href="/css/main.css">
+        <script src="/js/modernizr-2.6.2.min.js"></script>
+        {% block extraheaders %}{% endblock %}
+    </head>
+    <body>
+        <!--[if lt IE 7]>
+            <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
+        <![endif]-->
+        <header><div id="logo"><a href="/">Service discovery</a></div>
+        	<span id="user">{% if user %}
+        	{{user.nickname()}}<a class="logout" href="{{logout}}">Log out</a>
+        	{% else %}
+        	<a class="login" href="{{login}}">Log in</a>
+        	{% endif %}</span>
+        	{% if breadcrumbs %}
+        	<span class="breadcrumbs"><a href="{{breadcrumbs.href}}" title="{{ breadcrumbs.title }}">{{ breadcrumbs.title }}</a></span>
+        	{% endif %}
+        	<span class="title">{{ title }}</span>
+        </header>
+        <div id="content">
+    {% block content %}
+    <h1>{{ title }}</h1>
+    <p>Welcome to {{ title }}</p>
+	{% endblock %}
+	</div>
+	{% block scripts %}
+	{% endblock %}
+    </body>
+</html>
