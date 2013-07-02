@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+{% block title %}{% if object %}Edit - {{object.name}}{% else %}Create{% endif %}{% endblock %}
+{% block scripts %}
+<script type="text/javascript" src="/js/jquery-1.9.1.min.js"></script>
+{% endblock %}
+
+{% block content %}
+{% if error_message %}<p class="error">{{ error_message }}</p>{% endif %}
+{% block intro %}{% endblock %}
+<form class="form" action="" method="post" id="editobject">{{ csrf_token }}
+{{ form.non_field_errors }}
+<table>
+   {% for field in form %}
+   {% if not field.flags.hidden %}
+     <tr>
+       <th>{{ field.label }} {% if field.flags.required %}<sup class="requ">*</sup>{% endif %}</th>
+       <td>{{ field }}</td>
+       <td>
+         {% if field.description %}
+           {% if field.field_type=='checkboxinput' %}
+             <span class="help_text">{{ field.description }}</span>
+           {% else %}
+             <p class="help_text">{{ field.description }}</p>
+           {% endif %}
+         {% endif %}
+       </td>
+     </tr>
+     {% if field.errors %}
+       <tr><td>&nbsp;</td><td colspan="2" class="error">{% for err in field.errors %}<p>{{err}}</p>{%endfor%}</td></tr>
+     {% endif %}
+   {% endif %}
+   {% endfor %}
+        <tr><td colspan="2">
+   {% for field in form %}{% if field.flags.hidden %}{{field}}{% endif %}{% endfor %}
+<input type="submit" name="submit" value="Save" />
+<input type="submit" name="cancel" value="Cancel" />
+{% if object.pk and not no_delete %}<input type="submit" name="delete" value="Delete" />{% endif %}
+</td></tr>
+   <tr><td colspan="2" style="text-align:right;"><sup class="requ">*</sup>&nbsp;=&nbsp;required field</td></tr>
+</table>
+</form>
+{% endblock %}
+    {% block js %}
+    <script type="text/javascript">
+$(document).ready(function() {
+	'use strict';
+	/* When the form is submitted, iterate through all fields of class "vURLField" and remove any spaces from the value */
+	$('form').bind('submit',function(evt) {
+		$('.vURLField').each(function(index,elt) {
+			$(elt).val($(elt).val().replace(/ /g,'%20'));
+		});
+	});
+});
+</script>
+    {% endblock %}

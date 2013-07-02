@@ -40,12 +40,14 @@ $(document).ready(function(){
     	if(data.service_line){
     		$('#progress progress').attr('value',data.service_line);
     		if(numLines>0){
-    			$('#progress .percent').text(Math.floor(100*data.service_line/numLines));
+    			$('#progress .percent').text(Math.floor(100*data.service_line/numLines)+'%');
     		}
     		$('#num_services').text(data.num_services);
     		if(data.service_line==numLines){
 	    		p = $('<p>', {'class':'done'}).html('Done');
 				$('#progress').append(p);
+				socket.close()
+				socket=null;
     		}
     	}
     };

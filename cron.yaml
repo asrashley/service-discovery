@@ -1,0 +1,4 @@
+cron:
+- description: daily maintenance job
+  url: /work/maintenance
+  schedule: every 24 hours

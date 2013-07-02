@@ -5,19 +5,17 @@
 
 {% block content %}
 <form id="apiregistration" class="form" method="post" action="">
+	{{csrf_token}}
 	<h1>Request an API key</h1>
-	<p>To be able to request an API key, you need to provide the following
+	<p>Before a device is allowed to register its location, the author of the
+		application must have an API key that is used to authenticate device
+		requests</p>
+		<p>To be able to request an API key, you need to provide the following
 		information.</p>
 		<label for="service">Service</label>
 		<input type="hidden" name="service" id="id_service" />
-		<!-- <select name="service" data-placeholder="Choose a service..." id="id_service" class="chzn-select">
-			<option value=""></option>
-			{% for srv in services %}
-			<option value="_{{srv.name}}._{{srv.protocol}}">{{srv.description}} ({{srv.protocol.upper()}}{% if srv.port %} port {{srv.port}}{% endif %})</option>
-			{% endfor %}
-		</select>--><br />
-		<label for="description">API description</label><input type="text" name="description" /><br />
-		<input type="submit" name="submit" value="Request API key" />
+		<br /><label for="description">API description</label><input type="text" name="description" />
+		<br /><input type="submit" name="submit" value="Request API key" />
 </form>
 {% endblock %}
 
@@ -33,6 +31,7 @@ $(document).ready(function(){
             minimumInputLength: 3,
             ajax: {
                 url: "{{ajax_url}}",
+                cache: true,
                 containerCssClass:'service-select',
                 dataType: 'json',
                 data: function (term, page) {
@@ -57,23 +56,6 @@ $(document).ready(function(){
                     return rv;
                 }
             }
-            /*formatResult: function(item){
-            	var markup = '<p class="result">'+item.description+' ('+item.protocol.toUpperCase();
-            	if(item.port){
-            		markup += ' port '+item.port;
-            	}
-            	markup += ')</p>';
-            	return markup;
-            },
-			id: function(item){
-				return ['_', item.name, '._', item.protocol].join('');
-            },
-            formatSelection: function(item){
-				return ['_', item.name, '._', item.protocol].join('');
-            },
-            escapeMarkup: function (m) {
-            	return m;
-            }*/
         });
 });
 </script>

@@ -2,7 +2,8 @@
 @import "prefixer";
 
 @blue: #43a1f7;
-@lightGrey: #ddd;
+@lightGrey: #eee;
+@mediumGrey: #ddd;
 
 body {
   font-family: "Lucida Grande", Helvetica, Arial, sans-serif;
@@ -84,7 +85,7 @@ a {
 .button.hover {
   /*background: darker;*/
   /*background: linear-gradient(top, #43a1f7 0%, #2e70c4 100%);*/
-  color: @lightGrey; /* #43a1f7; */
+  color: @mediumGrey; /* #43a1f7; */
   border: 1px solid #2e70c4;
   cursor: pointer;
   text-shadow: 0 -1px 1px #2c6bbb;
@@ -112,7 +113,7 @@ a {
 	margin-left: auto;
 	margin-right: auto;
 	border-radius:0.75em;
-	background-color: #eee;
+	background-color: @lightGrey;
 	overflow-x:hidden;
   width: 35em;
   label {
@@ -127,16 +128,52 @@ a {
     width: 20em;
     color: black;
   }
+  th > label {
+    text-align: right;
+  }
+  .requ {
+    color: red;
+    font-size: 75%;
+  }
+  td.error {
+    font-size: 75%;
+  }
+  td > p {
+    margin: 0;
+    -webkit-margin-before: 0;
+    -webkit-margin-after: 0;
+  }
+}
+.error {
+  color: red;
+  font-weight: bold;
 }
 #pairingdatabase {
+  .form;
+  width: 90%;
+  > table {
+    border-collapse: collapse;
+  }
 	td {
 		padding: 0 0.5em;
+		border: 1px solid black;
 	}
-	.puid {
+	th {
+	  font-weight: bold;
+    border: 1px solid black;
+	}
+	.odd {
+	  background-color: darken(@lightGrey,10%);
+	}
+	.apikey {
 		font-size: 0.7em;
 	}
 	.username {
 		font-weight: bold;
+	}
+	.delete {
+  	background-color: red;
+	  font-weight: bold;
 	}
 }
 #apiregistration {
@@ -148,6 +185,9 @@ a {
   .select2-container, .service-select {
     width: 30em;
   }
+}
+#editobject {
+  width: 50em;
 }
 #subpage.ready {
 	display: block;
@@ -189,13 +229,17 @@ a {
 }
 
 #progress{
-  @pwidth: 10em;
+  @pwidth: 15em;
   progress {
-    width: pwidth;
+    width: @pwidth;
   }
   .percent {
+    @pctwidth: 4em;
     position: relative;
-    left: -(@pwidth/2);
+    text-align: center;
+    width: @pctwidth;
+    display: inline-block;
+    left: -(@pwidth/2 + @pctwidth/2);
   }
 }
 

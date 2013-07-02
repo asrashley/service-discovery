@@ -17,17 +17,22 @@ def delete_all_in_index(index_name):
         doc_index.delete(document_ids)
         
 class NetworkService(ndb.Model):
+    """representation of one IANA registered service"""
     INDEX_NAME='services'
     PROTOCOLS = ['tcp','udp','sctp','dccp']
-    name = ndb.StringProperty('nm',required=True, indexed=False, verbose_name='Name')
+    NAME_MAPPING = {
+                    'nm':'name', 'pt':'port', 'dc':'description', 'pr':'protocol',
+                    'as':'assignee', 'ct':'contact','md':'modification'
+                    }
+    name = ndb.StringProperty('nm',required=True, indexed=True, verbose_name='Name')
     port = ndb.IntegerProperty('pt',indexed=True, required=False, verbose_name='Port')
     description = ndb.StringProperty('dc',indexed=False, required=True, verbose_name='Description')
-    protocol = ndb.StringProperty('pr', indexed=False, choices=PROTOCOLS, required=True, verbose_name='Protocol')
+    protocol = ndb.StringProperty('pr', indexed=False, choices=PROTOCOLS, required=False, default='tcp', verbose_name='Protocol')
     assignee = ndb.StringProperty('as',indexed=False, required=True, verbose_name='Assignee')
     contact = ndb.StringProperty('ct',indexed=False, required=True, verbose_name='Contact')
-    registration = ndb.DateProperty('rd', indexed=False, required=False, verbose_name='Registration Date')
+    #registration = ndb.DateProperty('rd', indexed=False, required=False, verbose_name='Registration Date')
     modification = ndb.DateProperty('md', indexed=False, required=False, verbose_name='Modification Date')
-    reference = ndb.StringProperty('rf', indexed=False, required=False, verbose_name='Reference')
+    #reference = ndb.StringProperty('rf', indexed=False, required=False, verbose_name='Reference')
     
     @classmethod
     def empty_database(clz):
@@ -39,12 +44,11 @@ class NetworkService(ndb.Model):
         """create a search Document from an instance of this model"""
         fields=[search.AtomField(name='name', value=self.name),
                 search.TextField(name='description', value=self.description),
-                search.TextField(name='reference', value=self.reference),
                 search.AtomField(name='protocol', value=self.protocol),
                 ]
         if self.port:
             fields.append(search.NumberField(name='port', value=self.port))
-        return search.Document(doc_id=self.id, fields=fields)
+        return search.Document(doc_id=self.key.string_id(), fields=fields)
                 
     def put(self,*args,**kwargs):
         rv = super(NetworkService,self).put(*args,**kwargs)
@@ -55,6 +59,7 @@ class NetworkService(ndb.Model):
         return rv
     
 class ServiceLocation(ndb.Model):
+    """representation of the location of a device"""
     uid = ndb.StringProperty(required=True, indexed=True)
     name = ndb.StringProperty('nm',required=True, indexed=False)
     country = ndb.StringProperty('co',required=True, indexed=True)
@@ -65,10 +70,13 @@ class ServiceLocation(ndb.Model):
     last_update = ndb.DateTimeProperty('ts',auto_now=True)
     
 class ApiAuthorisation(ndb.Model):
+    """database of all authorisation data"""
     apikey = ndb.StringProperty('a',indexed=True, required=True, verbose_name='API key')
     secret = ndb.StringProperty('s',indexed=False, required=True, verbose_name='API secret')
     user = ndb.UserProperty('u',indexed=True, verbose_name='User')
     service = ndb.StringProperty('v', verbose_name='Service',indexed=False, required=False)
     country = ndb.StringProperty('c',required=True, indexed=True, verbose_name='Country')
     description = ndb.StringProperty('d',indexed=False, verbose_name='Description')
+    created = ndb.DateTimeProperty('n',auto_now_add=True)
+    last_update = ndb.DateTimeProperty('l',auto_now=True)
     

@@ -1,7 +1,7 @@
 {% extends 'layout.html' %}
-
+{% block title %}{{ error }}{% endblock %}
 {% block content %}
 <div id="buttons">
-	<h1>Only service-discovery administrators can request API keys</h1>
+	<h1>{{error}}</h1>
 </div>
 {% endblock %}

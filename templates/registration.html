@@ -1,0 +1,25 @@
+{% extends 'layout.html' %}
+{% block content %}
+<div id="pairingdatabase">
+	<table>
+	<thead>
+	<tr>
+	<th>API key</th><th>User</th><th>Service</th><th>Country</th><th>Description</th><th>Created</th><th>Last update</th>
+	</tr>
+	</thead>
+	<tbody>
+	{% for auth in authorisation %}
+	<tr class="{{ loop.cycle('odd', 'even') }}">
+		<td class="apikey">{{auth.apikey}}</td>
+		<td>{{auth.user}}</td>
+		<td>{{auth.service}}</td>
+		<td>{{auth.country}}</td>
+		<td>{{auth.description}}</td>
+		<td>{{auth.created}}</td>
+		<td>{{auth.last_update}}</td>
+		<td class="delete"><a href="{{uri_for('deregister',key=auth.key.urlsafe())}}" >x</a></td>
+	</tr>
+	{% endfor %}
+	</tbody>
+</table></div>
+{% endblock %}

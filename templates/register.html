@@ -4,8 +4,10 @@
 {% if reg_type=="api" %}<div class="form">{% endif %}
 <h1>This {{reg_type}} is {% if new_user %}now {% endif %}registered</h1>
 {% if reg_type=="api" %}
-<label for="apikey">API key</label><input type="text" value="{{apikey}}" name="apikey" width="20" /><br />
-<label for="secret">API secret</label><input type="text" value="{{secret}}" name="secret" width="20" />
+<label for="service">Service ID</label><input type="text" value="{{ak.service}}" name="service" width="20" disabled /><br />
+<label for="service">API description </label><input type="text" value="{{ak.description}}" name="description" width="20" disabled /><br />
+<label for="apikey">API key</label><input type="text" value="{{ak.apikey}}" name="apikey" width="20" /><br />
+<label for="secret">API secret</label><input type="text" value="{{ak.secret}}" name="secret" width="20" />
 </div>
 {% endif %}
 {% endblock %}

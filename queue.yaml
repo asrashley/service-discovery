@@ -2,3 +2,9 @@ total_storage_limit: 5M
 queue:
 - name: default
   rate: 5/s
+- name: import-worker
+  rate: 10/s
+  bucket_size: 2
+  retry_parameters:
+    task_age_limit: 1d
+    task_retry_limit: 20

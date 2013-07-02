@@ -3,28 +3,18 @@
 {% block content %}
 <div id="buttons">
 	{% if authenticated %}
-		{% for srv in services %}
-			<p class="button"><a data-uid="{{srv.uid}}" href="http://{{srv.address}}:{{srv.port}}/">{{srv.name}}</a></p>
-		{% else %}
-		<h1>Unable to find any services on your local network</h1>
-        {% endfor %}
-		<p class="button"><a href="/">Search for devices</a></p>
-		{% if is_current_user_admin %}<p class="button" id="pair"><a href="/register/api">Register an API</a></p>
-		<p class="button" id="pair"><a href="/services">Upload service name database</a></p>{% endif %}
-		<p class="button" id="pair"><a href="/unregister">Unregister this device</a></p>
+	  <p class="button"><a href="{{uri_for('search')}}">Search for devices</a></p>
+	  {% if is_current_user_admin %}
+		<p class="button" ><a href="{{uri_for('registered')}}">Registration database</a></p>
+		<p class="button" ><a href="{{uri_for('register',reg_type='api')}}">Register an API</a></p>
+		<p class="button" ><a href="{{uri_for('add-service')}}">Create a new service</a></p>
+		<p class="button" ><a href="{{uri_for('upload-services')}}">Upload service name database</a></p>
+		<p class="button"><a href="/_ah/admin/">GAE admin</a></p>
+	  {% endif %}
+	  <p class="button" id="pair"><a href="{{uri_for('unregister')}}">Unregister this device</a></p>
 	{% else %}
-	<p class="button" id="pair"><a href="/register/device">Register this device</a></p>
+	<p class="button" id="pair"><a href="{{uri_for('register',reg_type='device')}}">Register this device</a></p>
 	{% endif %}
-</div>
-
-<div id="subpage"></div>
-<div id="debug">
-	<ul>
-	{% for h in headers %}
-     <li>{{h[0]}}={{h[1]}}</li>
-    {% endfor %}
-    <li>{{remote_addr}}</li>
-    </ul>
 </div>
 {% endblock %}
 

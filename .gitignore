@@ -3,3 +3,4 @@ settings.py
 *.pyc
 .project
 .pydevproject
+wtforms

@@ -1,0 +1,15 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div id="buttons">
+		{% for srv in services %}
+			<p class="button"><a data-uid="{{srv.uid}}" href="http://{{srv.address}}:{{srv.port}}/">{{srv.name}}</a></p>
+		{% else %}
+		<h1>Unable to find any services on your local network</h1>
+        {% endfor %}
+		<p class="button"><a href="/">Refresh</a></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
