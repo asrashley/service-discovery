@@ -6,6 +6,7 @@
 	  <p class="button"><a href="{{uri_for('search')}}">Search for devices</a></p>
 	  {% if is_current_user_admin %}
 		<p class="button" ><a href="{{uri_for('registered')}}">Registration database</a></p>
+        <p class="button" ><a href="{{uri_for('logging')}}">Logging database</a></p>
 		<p class="button" ><a href="{{uri_for('register',reg_type='api')}}">Register an API</a></p>
 		<p class="button" ><a href="{{uri_for('add-service')}}">Create a new service</a></p>
 		<p class="button" ><a href="{{uri_for('upload-services')}}">Upload service name database</a></p>

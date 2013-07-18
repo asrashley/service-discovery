@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 #
-import hmac, hashlib, binascii, decimal, sys, json, os, uuid, logging, datetime
+import hmac, hashlib, binascii, decimal, sys, json, os, uuid, logging, datetime, urllib
 
 import webapp2, jinja2
 from google.appengine.api import users, taskqueue, channel, search
 from google.appengine.ext import deferred, blobstore, ndb
 from google.appengine.ext.webapp import blobstore_handlers
+from google.appengine.datastore.datastore_query import Cursor
 from webapp2_extras import securecookie
 from webapp2_extras import security
 from webapp2_extras.appengine.users import login_required, admin_required
@@ -14,7 +15,7 @@ from wtforms.ext.appengine.ndb import model_form, model_fields
 import wtforms
 import mimerender
 
-from models import NetworkService, ApiAuthorisation, ServiceLocation
+from models import NetworkService, ApiAuthorisation, ServiceLocation, LogEntry, EventLog
 from serviceparser import parse_service_list, parse_contact_list
 from settings import cookie_secret, csrf_secret 
 
@@ -78,7 +79,10 @@ def from_isodatetime(date_time):
         secs = (dt.hour*60+dt.minute)*60 + dt.second
         return datetime.timedelta(seconds=secs)
     if 'T' in date_time:
-        return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%M:%SZ")
+        try:
+            return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError:
+            return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%MZ")        
     if not 'Z' in date_time:
         try:
             return datetime.datetime.strptime(date_time, "%Y-%m-%d")
@@ -109,6 +113,7 @@ class RequestHandler(webapp2.RequestHandler):
         else:
             context['login'] = users.create_login_url(self.uri_for('home'))
         context['remote_addr'] = self.request.remote_addr
+        context['request_uri'] = self.request.uri
         return context
     
     def generate_csrf(self,context):
@@ -118,7 +123,7 @@ class RequestHandler(webapp2.RequestHandler):
         sig.update(self.request.headers['X-AppEngine-country'])
         sig.update(self.request.headers['User-Agent'])
         sig = sig.digest()
-        context['csrf_token'] ='<input type="hidden" name="csrf_token" value="%s" />'%binascii.b2a_base64(sig)
+        context['csrf_token'] ='<input type="hidden" name="csrf_token" value="%s" />'%urllib.quote(binascii.b2a_base64(sig))
         sc = securecookie.SecureCookieSerializer(cookie_secret)
         cookie = sc.serialize(self.CSRF_COOKIE_NAME, csrf)
         self.response.set_cookie(self.CSRF_COOKIE_NAME, cookie, httponly=True, max_age=3600)
@@ -130,7 +135,7 @@ class RequestHandler(webapp2.RequestHandler):
         self.response.delete_cookie(self.CSRF_COOKIE_NAME)
         if csrf:
             try:
-                token = self.request.params['csrf_token']
+                token = urllib.unquote(self.request.params['csrf_token'])
                 sig = hmac.new(csrf_secret,csrf,hashlib.sha1)
                 sig.update(self.request.headers['X-AppEngine-country'])
                 sig.update(self.request.headers['User-Agent'])
@@ -140,6 +145,16 @@ class RequestHandler(webapp2.RequestHandler):
             except KeyError:
                 pass
         return False
+
+    def password_hash(self, api_auth, uid):
+        """Calculate the password hash for a given ApiAuthorisation and UID""" 
+        sha1 = hashlib.sha1()
+        sha1.update(uid)
+        sha1.update(':')
+        sha1.update(api_auth.apikey)
+        sha1.update(':')
+        sha1.update(api_auth.secret)
+        return sha1.hexdigest()
         
     def check_authorisation(self):
         rv = None
@@ -150,6 +165,21 @@ class RequestHandler(webapp2.RequestHandler):
                 rv = ApiAuthorisation.query(ApiAuthorisation.apikey==appid).get()
         except KeyError:
             rv = None
+        if rv is None:
+            try:
+                auth =  self.request.headers['Authorization'].strip().split(' ')
+                if auth and auth[0]=='SRV':
+                    appid,uid,sig = auth[1].split(':')
+                    appid = appid.strip()
+                    rv = ApiAuthorisation.query(ApiAuthorisation.apikey==appid).get()
+                    if rv:
+                        sigcheck = hmac.new(self.password_hash(rv, uid),appid,hashlib.sha1)
+                        sigcheck.update(self.request.uri)
+                        sigcheck = sigcheck.hexdigest()
+                        if sigcheck!=sig:
+                            rv = None
+            except (KeyError, TypeError, ValueError):
+                rv=None            
         return rv
 
 class MainPage(RequestHandler):
@@ -215,11 +245,11 @@ class SearchHandler(RequestHandler):
             srv = NetworkService.query(NetworkService.name == service_type).get()
             if srv:
                 q = q.ancestor(srv)
-        q = q.query(ServiceLocation.public_address==self.request.remote_addr,
-                    ServiceLocation.country==self.request.headers['X-AppEngine-country'])
+        q = q.query(ServiceLocation.public_address==self.request.remote_addr)
+        #ServiceLocation.country==self.request.headers['X-AppEngine-country'])
         for ns in q:
             for addr in ns.internal_addresses.split(','):
-                rv.append({'name':ns.name,'uid':ns.uid,'address':addr.strip(), 'port':ns.port})
+                rv.append({'path':ns.path,'uid':ns.uid,'address':addr.strip(), 'port':ns.port})
         return {"services":rv, "handler":self}
             
 class RegistrationHandler(RequestHandler):
@@ -307,24 +337,29 @@ class RegistrationHandler(RequestHandler):
             self.response.headers['WWW-Authenticate']='SRV'
             self.error(401)
             return
-        sigcheck = hmac.new(str(auth.secret),appid,hashlib.sha1)
         try:
-            name=self.request.params['name'].strip() 
             addresses = self.request.POST.getall('address')
             uid = self.request.params['uid'].strip()
             port = int(self.request.params['port'])
             service_type = self.request.params['srv'].strip()
+            path=self.request.params['path'].strip() 
             srv = NetworkService.get_by_id(service_type)
             if not srv:
                 srv = NetworkService.query(NetworkService.name==service_type).get()
             if not srv:
                 logging.info('Unable to find service '+service_type)
                 raise ValueError
+            sigcheck = hmac.new(self.password_hash(auth, uid),appid,hashlib.sha1)            
+            sigcheck.update(':')
             sigcheck.update(service_type)
-            sigcheck.update(name)
+            sigcheck.update(':')
             sigcheck.update(uid)
+            sigcheck.update(':')
             sigcheck.update('%05d'%port)
+            sigcheck.update(':')
+            sigcheck.update(path)
             for addr in addresses:
+                sigcheck.update(':')
                 sigcheck.update(addr)
         except (KeyError,ValueError),e:
             logging.info('registration error '+str(e))
@@ -332,19 +367,22 @@ class RegistrationHandler(RequestHandler):
         sigcheck = sigcheck.hexdigest()
         if sigcheck==sig:
             status='ok'
-            try:
-                location = self.request.headers['X-AppEngine-CityLatLong']
-            except KeyError:
-                location = ndb.GeoPt(0,0)
+            #try:
+            #    lat,lng = self.request.headers['X-AppEngine-CityLatLong']
+            #    location = ndb.GeoPt(float(lat),float(lng))
+            #except (KeyError, ValueError):
+            #    location = ndb.GeoPt(0,0)
+            if path and path[0]=='/':
+                path = path[1:]
             loc = ServiceLocation(id=uid,
                                   parent=srv.key,
-                                  name=name, 
-                                  country=self.request.headers['X-AppEngine-country'],
                                   uid = uid,                      
                                   public_address = self.request.remote_addr,
-                                  location = location,
                                   port = port,
+                                  path=path, 
                                   internal_addresses = ', '.join(addresses))
+            #country=self.request.headers['X-AppEngine-country'],
+            #location = location,
             loc.put()
         self.response.content_type='application/json'
         self.response.write('{"status":"%s", "to":"%s", "address":"%s"}'%(status,uid,self.request.remote_addr))
@@ -524,19 +562,156 @@ class RegistrationList(RequestHandler):
         context['authorisation']=ApiAuthorisation.query().iter()
         template = templates.get_template('registration.html')
         self.response.write(template.render(context))
+
+class Logging(RequestHandler):
+    def render_json_exception(exception):
+        return json.dumps(dict(error=str(exception)))
+
+    def render_html_exception(exception):
+        template = templates.get_template('error.html')
+        return template.render(dict(error=str(exception), title="Search for devices"))
+
+    def render_json(handler,logs,next=None,prev=None):
+        return json.dumps(dict(logs=logs,next=next,prev=prev))
+
+    def render_html(**kwargs):
+        handler=kwargs['handler']
+        del kwargs['handler']
+        context = handler.create_context(title="Discovery logs")
+        context.update(kwargs)        
+        template = templates.get_template('logging.html')
+        return template.render(context)
+
+    @mimerender.map_exceptions(
+                               mapping=[
+                                        (NotAuthorisedException,'401 Not authorised'),
+                                        ],
+                               html = render_html_exception,
+                               json = render_json_exception,
+                               )
+    @mimerender(
+                default = 'html',
+                html = render_html,
+                json = render_json,
+                )
+    def get(self, uid=None, date=None):
+        if not users.is_current_user_admin():
+            raise NotAuthorisedException('Only admins can use this service')
+        context = {'handler':self}
+        curs = Cursor(urlsafe=self.request.get('cursor'))
+        query = EventLog.query()
+        if uid is not None:
+            query = query.filter(EventLog.uid==uid)
+            context["title_link"]=self.uri_for('logging')
+            context['uid'] = uid
+        if date is not None:
+            date = from_isodatetime(date)
+        if date is not None:
+            context["title_link"]=self.uri_for('logging')
+            query = query.filter(EventLog.date==date)
+        logs, next_curs, next = query.order(EventLog.date).fetch_page(20, start_cursor=curs)
+        context["logs"] = logs
+        if uid and logs:
+            context['info']={}
+            for log in logs:
+                if log.loc.lat or log.loc.lon:
+                    context['map'] = True
+                    context['info']['location'] = log.loc
+                if log.addr:
+                    context['info']['addr'] = log.addr
+                if log.city:
+                    context['info']['city'] = log.city
+                if log.extra:
+                    try:
+                        context['info']['extra'].update(log.extra)
+                    except KeyError:
+                        context['info']['extra']= dict(log.extra)                        
+        prev_curs=prev=None
+        if self.request.get('cursor'):
+            rev_curs = curs.reversed()
+            logs2, prev_curs, prev = query.order(-EventLog.date).fetch_page(20, start_cursor=rev_curs)
+        if next_curs and next:
+            context["next"] = next_curs.urlsafe() 
+        if prev_curs and prev:
+            context["prev"] = prev_curs.urlsafe()
+        return context 
+        #template = templates.get_template('logging.html')
+        #self.response.write(template.render(context))
+
+    def post(self):
+        if self.request.content_type!='application/json':
+            self.response.status=400
+            logging.error('invalid content type %s'%self.request.content_type)
+            self.response.write('invalid content type')
+            return
+        ak = self.check_authorisation()
+        if not ak:
+            self.response.headers['WWW-Authenticate']='SRV'
+            self.error(401)
+            return
+        data = json.load(self.request.body_file)
+        #{"devices":[{"uid":"4d9cf5f4-4574-4381-9df3-1d6e7ca295ff","date":"2013-07-10T08:54:21Z", "events":[{"event":"start","time":"2013-07-10T08:54:22Z"},{"event":"found","time":"2013-07-10T08:54:22Z","method":"cloud"},{"event":"found","time":"2013-07-10T08:54:27Z","method":"upnp"},{"event":"found","time":"2013-07-10T08:54:28Z","method":"zeroconf"},{"event":"end","time":"2013-07-10T08:54:37Z"}]}]}
+        try:
+            cache = {}
+            for dev in data['devices']:
+                uid = dev['uid']
+                start_time = from_isodatetime(dev['date'])
+                id = 'u%s%s'%(uid,start_time.date().isoformat())
+                id = id.replace('-','')
+                try:
+                    log = cache[id]
+                except KeyError:                        
+                    log = EventLog.query(EventLog._key==ndb.Key(EventLog,id)).get()
+                    if not log:
+                        log = EventLog(id=id, entries=[], uid=uid, date=start_time)
+                    cache[id] = log
+                try:
+                    lat,lng = self.request.headers['X-AppEngine-CityLatLong']
+                    log.loc = ndb.GeoPt(float(lat),float(lng))
+                except (KeyError, ValueError):
+                    if log.loc is None:
+                        log.loc = ndb.GeoPt(0,0)
+                    #log.loc = ndb.GeoPt(51.52,0.11)
+                log.addr = self.request.remote_addr
+                try: 
+                    log.city = ', '.join([self.request.headers['X-AppEngine-City'],self.request.headers['X-AppEngine-Region']])
+                except KeyError:
+                    # These geo-ip headers don't exist on the dev server
+                    pass
+                for event in dev['events']:
+                    timestamp = from_isodatetime(event['time'])
+                    if event['event']=='found' and event.has_key('method'):
+                        event['event'] = event['method']
+                    le = LogEntry(timestamp=timestamp, event=event['event'])
+                    log.entries.append(le)
+                try:
+                    log.extra = data['extra']
+                except KeyError:
+                    pass
+            for log in cache.values():
+                log.put()
+            self.response.content_type='text/plain'
+            self.response.write('logs accepted')                                             
+        except KeyError,e:
+            self.response.status=400
+            logging.error(str(e))
+        
         
 class MaintenanceWorker(webapp2.RequestHandler):
     def get(self):
-        updated=[]
-        delete_me=[]
-        for auth in ApiAuthorisation.query():
-            if auth.apikey=='' or auth.apikey is None:
-                delete_me.append(auth.key)
-            elif auth.created is None:
-                auth.created = datetime.datetime.now()
-                auth.modified = datetime.datetime.now()
-                updated.append(auth.apikey)
-                auth.put()
-        ndb.delete_multi(delete_me)
+        expiry = datetime.datetime.now() - datetime.timedelta(hours=8)
+        expired_locations = ServiceLocation.query(ServiceLocation.last_update<expiry).fetch(keys_only=True)
+        ndb.delete_multi(expired_locations)
+        #updated=[]
+        #delete_me=[]
+        #for auth in ApiAuthorisation.query():
+        #    if auth.apikey=='' or auth.apikey is None:
+        #        delete_me.append(auth.key)
+        #    elif auth.created is None:
+        #        auth.created = datetime.datetime.now()
+        #        auth.modified = datetime.datetime.now()
+        #        updated.append(auth.apikey)
+        #        auth.put()
+        #ndb.delete_multi(delete_me)
         self.response.content_type='text/plain'
-        self.response.write('cleanup done '+str(updated))                             
+        self.response.write('cleanup done')                             

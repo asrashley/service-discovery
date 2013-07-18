@@ -10,7 +10,17 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
+- kind: EventLog
+  properties:
+  - name: uid
+  - name: date
+
 - kind: NetworkService
+  properties:
+  - name: __key__
+    direction: desc
+
+- kind: __Stat_PropertyType_PropertyName_Kind__
   properties:
   - name: __key__
     direction: desc

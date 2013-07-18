@@ -10,7 +10,7 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width">
         <link href='http://fonts.googleapis.com/css?family=Comfortaa:700' rel='stylesheet' type='text/css'>
-        <link rel="stylesheet" href="/css/main.css">
+        <link rel="stylesheet" href="/css/main.css" />
         <script src="/js/modernizr-2.6.2.min.js"></script>
         {% block extraheaders %}{% endblock %}
     </head>
@@ -27,7 +27,9 @@
         	{% if breadcrumbs %}
         	<span class="breadcrumbs"><a href="{{breadcrumbs.href}}" title="{{ breadcrumbs.title }}">{{ breadcrumbs.title }}</a></span>
         	{% endif %}
+        	{% if title_link %}<a href="{{title_link}}">{% endif %}
         	<span class="title">{{ title }}</span>
+        	{% if title_link %}</a>{% endif %}
         </header>
         <div id="content">
     {% block content %}

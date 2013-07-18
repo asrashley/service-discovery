@@ -18,5 +18,9 @@ app = webapp2.WSGIApplication([
     webapp2.Route(r'/work/maintenance', handler=views.MaintenanceWorker, name="maintenance"),
     webapp2.Route(r'/registered/', handler=views.RegistrationList, name="registered"),
     webapp2.Route(r'/_ah/channel/<:(dis)?connected>/', handler=views.ChannelHandler, name="channel"),
+    webapp2.Route(r'/log/', handler=views.Logging, name="logging"),
+    webapp2.Route(r'/log/<date:\d{4}-\d+-\d+>/', handler=views.Logging, name="log-by-date"),
+    #UID 4d9cf5f4-4574-4381-9df3-1d6e7ca295ffe
+    webapp2.Route(r'/log/<uid:[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+>/', handler=views.Logging, name="log-by-uid"),
     webapp2.Route(r'/', handler=views.MainPage, name="home"),
 ], debug=True)

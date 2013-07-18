@@ -148,7 +148,7 @@ a {
   color: red;
   font-weight: bold;
 }
-#pairingdatabase {
+#pairingdatabase, #logging {
   .form;
   width: 90%;
   > table {
@@ -175,7 +175,15 @@ a {
   	background-color: red;
 	  font-weight: bold;
 	}
+	.time, .count {
+	   text-align: center;
+	}
 }
+
+#logging {
+    width: 45em;
+}
+
 #apiregistration {
   min-height: 22em;
   width:40em;
@@ -241,6 +249,10 @@ a {
     display: inline-block;
     left: -(@pwidth/2 + @pctwidth/2);
   }
+}
+
+.servicelocation {
+  display: none;
 }
 
 @media only screen and (min-width: 40em) {

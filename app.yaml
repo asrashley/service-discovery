@@ -8,6 +8,12 @@ inbound_services:
 - channel_presence
 
 handlers:
+- url: /remoteapi.*
+  script: google.appengine.ext.remote_api.handler.app
+  login: admin
+- url: /_ah/queue/deferred
+  script: djangoappengine.deferred.handler.application
+  login: admin
 - url: /css
   static_dir: static/css
   expiration: 1h
@@ -47,6 +53,7 @@ libraries:
 skip_files:
 - ^(.*/)?#.*#
 - ^(.*/)?.*~
+- ^(.*/)?.*\.less
 - ^(.*/)?.*\.py[co]
 - ^(.*/)?.*/RCS/.*
 - ^(.*/)?\..*

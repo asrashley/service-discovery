@@ -1,4 +1,4 @@
 cron:
-- description: daily maintenance job
+- description: maintenance job
   url: /work/maintenance
-  schedule: every 24 hours
+  schedule: every 5 hours
