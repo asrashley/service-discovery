@@ -3,18 +3,18 @@
 {% block content %}
 <div id="buttons">
 	{% if authenticated %}
-	  <p class="button"><a href="{{uri_for('search')}}">Search for devices</a></p>
+	  <p class="button"><a href="{{uri_for('search')}}">{{routes['search'].title}}</a></p>
 	  {% if is_current_user_admin %}
-		<p class="button" ><a href="{{uri_for('registered')}}">Registration database</a></p>
-        <p class="button" ><a href="{{uri_for('logging')}}">Logging database</a></p>
-		<p class="button" ><a href="{{uri_for('register',reg_type='api')}}">Register an API</a></p>
-		<p class="button" ><a href="{{uri_for('add-service')}}">Create a new service</a></p>
-		<p class="button" ><a href="{{uri_for('upload-services')}}">Upload service name database</a></p>
+		<p class="button" ><a href="{{uri_for('registered')}}">{{routes['registered'].title}}</a></p>
+        <p class="button" ><a href="{{uri_for('logging')}}">{{routes['logging'].title}}</a></p>
+		<p class="button" ><a href="{{uri_for('register',reg_type='api')}}">{{routes['register'].title}}</a></p>
+		<p class="button" ><a href="{{uri_for('add-service')}}">{{routes['add-service'].title}}</a></p>
+		<p class="button" ><a href="{{uri_for('upload-services')}}">{{routes['upload-services'].title}}</a></p>
 		<p class="button"><a href="/_ah/admin/">GAE admin</a></p>
 	  {% endif %}
-	  <p class="button" id="pair"><a href="{{uri_for('unregister')}}">Unregister this device</a></p>
+	  <p class="button" id="pair"><a href="{{uri_for('unregister')}}">{{routes['unregister'].title}}</a></p>
 	{% else %}
-	<p class="button" id="pair"><a href="{{uri_for('register',reg_type='device')}}">Register this device</a></p>
+	<p class="button" id="pair"><a href="{{uri_for('register',reg_type='device')}}">{{routes['register'].title}}</a></p>
 	{% endif %}
 </div>
 {% endblock %}

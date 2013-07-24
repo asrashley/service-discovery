@@ -17,7 +17,8 @@ import mimerender
 
 from models import NetworkService, ApiAuthorisation, ServiceLocation, LogEntry, EventLog
 from serviceparser import parse_service_list, parse_contact_list
-from settings import cookie_secret, csrf_secret 
+from settings import cookie_secret, csrf_secret
+from routes import routes 
 
 mimerender = mimerender.Webapp2MimeRender()
 
@@ -92,20 +93,26 @@ def from_isodatetime(date_time):
 
         
 class RequestHandler(webapp2.RequestHandler):
-    HOME_PAGE_TITLE="Service discovery"
     CLIENT_COOKIE_NAME='discovery'
     CSRF_COOKIE_NAME='csrf'
     
-    def create_context(self, title=None, **kwargs):
+    def create_context(self, **kwargs):
+        route = routes[self.request.route.name]
         context = {
-                   "title":self.HOME_PAGE_TITLE if title is None else title,
+                   "title": kwargs.get('title', route.title),
                    "uri_for":self.uri_for
                    }
+        #parent = app.router.match()
+        #(route, args, kwargs)
         for k,v in kwargs.iteritems():
             context[k] = v
-        if title: #self.request.uri!=self.uri_for('home'):
-            context["breadcrumbs"]={"title":self.HOME_PAGE_TITLE,
-                                    "href":self.uri_for('home')}
+        p = route.parent
+        context["breadcrumbs"]=[]
+        while p:
+            p = routes[p]
+            context["breadcrumbs"].insert(0,{"title":p.title,
+                                           "href":self.uri_for(p.name)})
+            p = p.parent
         context['user'] = self.user = users.get_current_user()
         if self.user:
             context['logout'] = users.create_logout_url(self.uri_for('home'))
@@ -183,9 +190,10 @@ class RequestHandler(webapp2.RequestHandler):
         return rv
 
 class MainPage(RequestHandler):
-    def get(self):
-        context = self.create_context() 
+    def get(self, **kwargs):
+        context = self.create_context(**kwargs) 
         context["headers"]=[]
+        context['routes'] = routes
         appid = ak = None
         ak = self.check_authorisation()
         if ak:
@@ -212,13 +220,13 @@ class SearchHandler(RequestHandler):
 
     def render_html_exception(exception):
         template = templates.get_template('error.html')
-        return template.render(dict(error=str(exception), title="Search for devices"))
+        return template.render(dict(error=str(exception)))
 
     def render_json(services, handler):
         return json.dumps(dict(services=services))
 
     def render_html(services, handler):
-        context = handler.create_context("Search for devices")
+        context = handler.create_context()
         context["services"] = services
         template = templates.get_template('discovery.html')
         return template.render(context)
@@ -256,7 +264,7 @@ class RegistrationHandler(RequestHandler):
     """register a device or an API"""
     @login_required
     def get(self,reg_type):
-        context = self.create_context("Register a device", reg_type=reg_type, new_user=False)
+        context = self.create_context(reg_type=reg_type, new_user=False)
         user = users.get_current_user()
         #if not user:
         #    self.redirect(users.create_login_url(self.request.uri))
@@ -415,7 +423,7 @@ class NetworkServiceSearch(webapp2.RequestHandler):
         
 class UnregistrationHandler(RequestHandler):
     def get(self, key=None):
-        context = self.create_context(title="Unregister this device")
+        context = self.create_context()
         if key is None:
             self.response.delete_cookie(self.CLIENT_COOKIE_NAME)
         else:
@@ -440,7 +448,7 @@ class EditNetworkService(RequestHandler):
         self.post(service_type)
         
     def post(self, service_type=None):
-        context = self.create_context("Add a service")
+        context = self.create_context()
         if not users.is_current_user_admin():
             context['error']='Only a site administrator can create a new service'
             template = templates.get_template('error.html')
@@ -558,7 +566,7 @@ class ChannelHandler(webapp2.RequestHandler):
 class RegistrationList(RequestHandler):
     @admin_required
     def get(self):
-        context = self.create_context(title="Registration database")
+        context = self.create_context()
         context['authorisation']=ApiAuthorisation.query().iter()
         template = templates.get_template('registration.html')
         self.response.write(template.render(context))
@@ -577,8 +585,10 @@ class Logging(RequestHandler):
     def render_html(**kwargs):
         handler=kwargs['handler']
         del kwargs['handler']
-        context = handler.create_context(title="Discovery logs")
+        #parent="logging" if context.has_key("date") else "home"
+        context = handler.create_context()
         context.update(kwargs)        
+        context['json']= json.dumps([l.as_dict() for l in kwargs['logs']])
         template = templates.get_template('logging.html')
         return template.render(context)
 
@@ -602,12 +612,17 @@ class Logging(RequestHandler):
         query = EventLog.query()
         if uid is not None:
             query = query.filter(EventLog.uid==uid)
-            context["title_link"]=self.uri_for('logging')
+            #context["title_link"]=self.uri_for('logging')
             context['uid'] = uid
+        try:
+            context['latlong'] = self.request.headers['X-AppEngine-CityLatLong'].split(',')
+        except KeyError:
+            pass
         if date is not None:
             date = from_isodatetime(date)
         if date is not None:
             context["title_link"]=self.uri_for('logging')
+            context["date"] = date
             query = query.filter(EventLog.date==date)
         logs, next_curs, next = query.order(EventLog.date).fetch_page(20, start_cursor=curs)
         context["logs"] = logs
@@ -617,10 +632,9 @@ class Logging(RequestHandler):
                 if log.loc.lat or log.loc.lon:
                     context['map'] = True
                     context['info']['location'] = log.loc
-                if log.addr:
-                    context['info']['addr'] = log.addr
-                if log.city:
-                    context['info']['city'] = log.city
+                for f in ['addr','name','city']:
+                    if getattr(log,f):
+                        context['info'][f] = getattr(log,f) 
                 if log.extra:
                     try:
                         context['info']['extra'].update(log.extra)
@@ -639,6 +653,22 @@ class Logging(RequestHandler):
         #self.response.write(template.render(context))
 
     def post(self):
+        def make_key(uid, start_time):
+            return ('u%s%s'%(uid,start_time.date().isoformat())).replace('-','')
+        
+        def get_log_entry(uid, start_time):
+            log=None
+            try:
+                id = make_key(uid,start_time)
+                log = cache[id]
+            except KeyError:                        
+                log = EventLog.query(EventLog._key==ndb.Key(EventLog,id)).get()
+                if not log:
+                    log = EventLog(id=id, entries=[], uid=uid, date=start_time, client=False)
+                log.entries.sort(LogEntry.cmp)
+                cache[id] = log
+            return log
+        
         if self.request.content_type!='application/json':
             self.response.status=400
             logging.error('invalid content type %s'%self.request.content_type)
@@ -650,32 +680,31 @@ class Logging(RequestHandler):
             self.error(401)
             return
         data = json.load(self.request.body_file)
-        #{"devices":[{"uid":"4d9cf5f4-4574-4381-9df3-1d6e7ca295ff","date":"2013-07-10T08:54:21Z", "events":[{"event":"start","time":"2013-07-10T08:54:22Z"},{"event":"found","time":"2013-07-10T08:54:22Z","method":"cloud"},{"event":"found","time":"2013-07-10T08:54:27Z","method":"upnp"},{"event":"found","time":"2013-07-10T08:54:28Z","method":"zeroconf"},{"event":"end","time":"2013-07-10T08:54:37Z"}]}]}
+        #{"devices":[{"date":"2013-07-22T11:40:51Z","uid":"4d9cf5f4-4574-4381-9df3-1d6e7ca295ff","events":[{"time":"2013-07-22T11:40:51Z","event":"start"},{"method":"upnp","time":"2013-07-22T11:40:53Z","event":"found"},{"method":"cloud","time":"2013-07-22T11:40:53Z","event":"found"},{"time":"2013-07-22T11:40:53Z","event":"end"},{"method":"zeroconf","time":"2013-07-22T11:40:59Z","event":"found"}]}],"extra":{"client":{"uid":"af290300-bef5-4bfd-838c-e05c3c99f73e"},"dhcp":{"dns1":"172.20.0.102","dns2":"172.20.0.106","gatewayMAC":"00:90:0b:25:6c:f6","gatewayIP":"172.20.0.1","address":"172.20.4.42","netmask":"255.255.248.0"},"wifi":{"bssid":"02:e6:fe:91:a5:c3","mac":"60:a4:4c:91:a5:c3","ip":"172.20.4.42"}}}
         try:
             cache = {}
             for dev in data['devices']:
                 uid = dev['uid']
                 start_time = from_isodatetime(dev['date'])
-                id = 'u%s%s'%(uid,start_time.date().isoformat())
-                id = id.replace('-','')
+                log = get_log_entry(uid, start_time)
                 try:
-                    log = cache[id]
-                except KeyError:                        
-                    log = EventLog.query(EventLog._key==ndb.Key(EventLog,id)).get()
-                    if not log:
-                        log = EventLog(id=id, entries=[], uid=uid, date=start_time)
-                    cache[id] = log
-                try:
-                    lat,lng = self.request.headers['X-AppEngine-CityLatLong']
+                    lat,lng = self.request.headers['X-AppEngine-CityLatLong'].split(',')
                     log.loc = ndb.GeoPt(float(lat),float(lng))
                 except (KeyError, ValueError):
                     if log.loc is None:
                         log.loc = ndb.GeoPt(0,0)
                     #log.loc = ndb.GeoPt(51.52,0.11)
+                try:
+                    log.name = dev['name']
+                except KeyError:
+                    pass
                 log.addr = self.request.remote_addr
                 try: 
-                    log.city = ', '.join([self.request.headers['X-AppEngine-City'],self.request.headers['X-AppEngine-Region']])
-                except KeyError:
+                    log.city = ', '.join([self.request.headers['X-AppEngine-City'],
+                                          self.request.headers['X-AppEngine-Region'],
+                                          self.request.headers['X-AppEngine-Country']])
+                except KeyError,e:
+                    logging.debug(str(e))
                     # These geo-ip headers don't exist on the dev server
                     pass
                 for event in dev['events']:
@@ -686,9 +715,25 @@ class Logging(RequestHandler):
                     log.entries.append(le)
                 try:
                     log.extra = data['extra']
+                    if data['extra'].has_key('client'):
+                         puid = data['extra']['client']['uid']
+                         clog = get_log_entry(puid, start_time)
+                         clog.client=True
+                         clog.addr = log.addr
+                         clog.city = log.city
+                         clog.loc = log.loc
+                         clog.extra = data['extra']
+                         for event in dev['events']:
+                             timestamp = from_isodatetime(event['time'])
+                             if event['event']=='found' and event.has_key('method'):
+                                 event['event'] = event['method']
+                             le = LogEntry(timestamp=timestamp, event=event['event'])
+                             clog.entries.append(le)
+                         clog.put()
                 except KeyError:
                     pass
             for log in cache.values():
+                log.entries.sort(LogEntry.cmp)
                 log.put()
             self.response.content_type='text/plain'
             self.response.write('logs accepted')                                             

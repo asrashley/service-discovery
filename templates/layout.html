@@ -19,17 +19,21 @@
             <p class="chromeframe">You are using an <strong>outdated</strong> browser. Please <a href="http://browsehappy.com/">upgrade your browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">activate Google Chrome Frame</a> to improve your experience.</p>
         <![endif]-->
         <header><div id="logo"><a href="/">Service discovery</a></div>
+        <div class="info">
         	<span id="user">{% if user %}
         	{{user.nickname()}}<a class="logout" href="{{logout}}">Log out</a>
         	{% else %}
         	<a class="login" href="{{login}}">Log in</a>
         	{% endif %}</span>
+        	<div class="nav">
         	{% if breadcrumbs %}
-        	<span class="breadcrumbs"><a href="{{breadcrumbs.href}}" title="{{ breadcrumbs.title }}">{{ breadcrumbs.title }}</a></span>
+        	{% for bc in breadcrumbs %}
+        	<p class="breadcrumbs"><a href="{{bc.href}}" title="{{ bc.title }}">{{ bc.title }}</a></p>
+        	{% endfor %}
         	{% endif %}
-        	{% if title_link %}<a href="{{title_link}}">{% endif %}
-        	<span class="title">{{ title }}</span>
-        	{% if title_link %}</a>{% endif %}
+        	<p class="title">{% if title_link %}<a href="{{title_link}}">{% endif %}{{ title }}{% if title_link %}</a>{% endif %}</p>
+        	</div>
+        	</div>        	
         </header>
         <div id="content">
     {% block content %}
