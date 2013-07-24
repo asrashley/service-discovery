@@ -21,23 +21,36 @@ header {
 	font-size: 1.25rem;
 	position: relative;
 	#logo {
-		width: 9.5em;
+		width: 50%;
 		height: 100%;
 		font-family: 'Comfortaa', cursive;
 		display: inline-block;
 		font-size: 3em;
 		color: @blue;
+        position: absolute;
+        left: 0;
+	}
+	.info {
+        position: absolute;
+        left: 47%;
+        height: 100%;
+        width: 50%;
+	}
+	.nav {
+	   position: absolute;
+	   bottom: 0.2em;
 	}
 	.breadcrumbs {
-		position: absolute;
-		top: 1em;
+		/*position: relative;
+		top: -1em;*/
 		color: white;
+		font-size: 0.9em;
 	}
 	.title {
-		display: inline-block;
+		/*display: inline-block;*/
 		color: @blue;
-		position: relative;
-		top: 0.25em;
+		/*position: relative;
+		top: 0.25em;*/
 		padding: 0;
 		text-align: left;
 		border-radius: 0.2em;
@@ -151,7 +164,7 @@ a {
 #pairingdatabase, #logging {
   .form;
   width: 90%;
-  > table {
+  table {
     border-collapse: collapse;
   }
 	td {
@@ -182,6 +195,17 @@ a {
 
 #logging {
     width: 45em;
+    th {
+        background: #333;
+        color: white;
+        vertical-align: middle;
+    }
+    .failures {
+        color: red;
+    }
+    .devicetype > a > img {
+        width: 3em;
+    }
 }
 
 #apiregistration {
@@ -251,6 +275,9 @@ a {
   }
 }
 
+.clickable {
+    cursor: pointer;
+}
 .servicelocation {
   display: none;
 }

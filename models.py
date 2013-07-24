@@ -82,24 +82,60 @@ class ApiAuthorisation(ndb.Model):
 class LogEntry(ndb.Model):
     event = ndb.StringProperty('ev',required=True, choices=['start','zeroconf','upnp','cloud','end'], verbose_name="Event type")
     timestamp = ndb.DateTimeProperty('ts', required=True, verbose_name="Timestamp")
+    
+    def as_dict(self):
+        return {"ev":self.event, "ts":self.timestamp.isoformat()}
+    
+    @classmethod
+    def cmp(clz,a,b):
+        if a is None and b is None:
+            return 0
+        if b is None:
+            return 1
+        if a is None:
+            return -1
+        try:
+            delta = a.timestamp - b.timestamp
+        except AttributeError:
+            delta = a['ts'] - b['ts']
+        if delta.days==0 and delta.seconds==0:
+            return delta.microseconds
+        return int(delta.total_seconds())
 
 class EventLog(ndb.Model):
     uid = ndb.StringProperty(required=True, indexed=True)
     date = ndb.DateProperty(required=True, indexed=True)
+    client = ndb.BooleanProperty(default=False, indexed=False)
+    name = ndb.StringProperty(required=False, indexed=False)
     loc = ndb.GeoPtProperty(indexed=False,required=False, verbose_name="Location")
     city = ndb.StringProperty(indexed=False, required=False, verbose_name="City")
     addr = ndb.StringProperty(indexed=False, required=True, verbose_name="Public IP address")
     entries = ndb.LocalStructuredProperty(LogEntry, repeated=True)
     extra = ndb.JsonProperty(required=False, indexed=False)
     
-    def count(self):
+    def as_dict(self):
+        rv = {"uid":self.uid, 
+              "date":self.date.isoformat(), 
+              "location": dict(lat=self.loc.lat, lon=self.loc.lon),
+              "city":self.city,
+              "publicAddress":self.addr,
+              "extra":self.extra
+              }
+        rv['events'] = [ e.as_dict() for e in self.entries]
+        return rv
+    
+    def count(self, event=None):
+        if event is None:
+            event = 'start'
         rv=0
         for entry in self.entries:
-            if entry.event=='start':
+            if entry.event==event:
                 rv += 1
         return rv
         
     def duration(self,event):
+        """calculates the average time taken for each of the given discovery method
+        """
         start = None
         times=[]
         for entry in self.entries:

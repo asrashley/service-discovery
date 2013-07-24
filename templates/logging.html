@@ -31,25 +31,60 @@ a.balloon {
     height: 22em;
     width: 40em;
 }
+.eventlog {
+    margin-bottom: 1em;
+    width: 15em;
+}
+.eventlog td {
+    width: 50%;
+}
+.leftcol {
+    width: 60%;
+    float: left;
+    font-size: 0.9em;
+}
+.rightcol {
+    width: 40%;
+    float: left;
+    font-size: 0.9em;
+}
+a.back {
+    float: right;
+    color: blue;
+    text-decoration: underline;
+    font-size: 0.9em;
+}
+#detail > h2 {
+    margin-bottom: 1em;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div id="logging">
-<table>
+<div id="logging" >
+<table id="summary">
 <thead>
-<tr class="odd">
-<th class="location" rowspan="2">Location</th><th class="date" rowspan="2">Date</th><th rowspan="2">Number<br/>of<br />samples</th>
+<tr>
+<th class="devicetype" rowspan="2">Type</th>
+<th class="location" rowspan="2">Location</th><th class="date" rowspan="2">Date</th><th colspan="4">Number<br/>of<br />samples</th>
 <th colspan="3">Average duration</th></tr>
 <tr class="odd">
+<th>Total</th>
+<th><img src="/img/globe.png" alt="Cloud" title="Cloud" /></th>
+<th><img src="/img/bonjour.png" alt="ZeroConf" title="ZeroConf" /></th>
+<th><img src="/img/upnp.png" alt="UPnP" title="UPnP" /></th>
 <th><img src="/img/globe.png" alt="Cloud" title="Cloud" /></th>
 <th><img src="/img/bonjour.png" alt="ZeroConf" title="ZeroConf" /></th>
 <th><img src="/img/upnp.png" alt="UPnP" title="UPnP" /></th></tr></thead>
 <tbody>
 {% for log in logs %}
-<tr class="{{ loop.cycle('even', 'odd') }}">
-<td class="location"><a href="{{uri_for('log-by-uid', uid=log.uid)}}" class="balloon">{{log.city}} ({{log.addr}})
-<table class="popup"><tr><td>UID</td><td class="uid">{{log.uid}}</td></tr>
+<tr class="{{ loop.cycle('odd','even') }}" data-uid="{{log.uid}}" data-date="{{log.date.isoformat()}}"
+data-client="{{log.client|lower}}" {% if log.name %}data-name="{{log.name}}"{% endif %}>
+<td class="balloon devicetype {% if log.client %}client{% else %}device{% endif %}"><a href="{{uri_for('log-by-uid', uid=log.uid)}}"><img {% if log.client %}src="/img/smart_phone_simple.png" alt="client" title="Client results"{% else %}
+src="/img/radio_silhouette.png" alt="device" title="Device results" {% endif %} />
+<table class="popup">
+{% if log.name %}<tr><td>Friendly name</td><td>{{log.name}}</td></tr>{% endif %}
+<tr><td>UID</td><td class="uid">{{log.uid}}</td></tr>
 <tr><td>Public IP address</td><td class="ipaddress">{{log.addr}}</td></tr>
 <tr><td>Location</td><td class="location">{{log.city}}</td></tr>
 <tr><td>Lat,long</td><td class="location">{{log.loc}}</td></tr>
@@ -60,8 +95,17 @@ a.balloon {
 {% endif %}
 </table>
 </a></td>
+<td class="location"><a href="{{uri_for('log-by-uid', uid=log.uid)}}">{{log.city}} ({{log.addr}})
+</a></td>
 <td class="date"><a href="{{uri_for('log-by-date', date=log.date.isoformat())}}">{{log.date}}</a></td>
-<td class="count">{{log.count()}}</td>
+{% set total_count = log.count() %}
+<td class="count">{{total_count}}</td>
+{% set count = log.count('cloud') %}
+<td class="count {% if count<total_count %}failures{% endif %}">{{count}}</td>
+{% set count = log.count('zeroconf') %}
+<td class="count {% if count<total_count %}failures{% endif %}">{{count}}</td>
+{% set count = log.count('upnp') %}
+<td class="count {% if count<total_count %}failures{% endif %}">{{count}}</td>
 <td class="time">{% set dur = log.duration('cloud') %}{% if dur==None %}N/A{%else%}{{'%.03f'|format(dur)}}{%endif %}</td>
 <td class="time">{% set dur = log.duration('zeroconf') %}{% if dur==None %}N/A{%else%}{{'%.03f'|format(dur)}}{%endif %}</td>
 <td class="time">{% set dur = log.duration('upnp') %}{% if dur==None %}N/A{%else%}{{'%.03f'|format(dur)}}{%endif %}</td>
@@ -70,10 +114,11 @@ a.balloon {
 </tbody></table>
 {% if info %}
 <table>
+    {% if info.name %}<tr><td>Friendly name</td><td>{{info.name}}</td></tr>{% endif %}
     <tr><td>UID</td><td class="uid">{{uid}}</td></tr>
     <tr><td>Public IP address</td><td class="ipaddress">{{info.addr}}</td></tr>
-    <tr><td>Location</td><td class="location">{{info.city}}</td></tr>
-    <tr><td>Lat,long</td><td class="location">{{info.location}}</td></tr>
+    <tr><td>City</td><td class="location">{{info.city}}</td></tr>
+    <tr><td>Location</td><td class="location">{{info.location}}</td></tr>
     {% if info.extra and info.extra.dhcp %}
         {% for k,v in info.extra.dhcp.iteritems() %}
             <tr><td>DHCP {{k}}</td><td class="extra">{{v}}</td></tr>
@@ -112,17 +157,9 @@ google.maps.event.addDomListener(window, 'load', function() {
       });
 </script>
 {% endif %}
-<!-- 
-<script type="text/javascript" src="/js/jquery-1.9.1.min.js"></script>
-<script type="text/javascript">
-$(document).ready(function(){
-    'use strict';
-    $('a.uid').on('click',function(ev){
-    	ev.preventDefault();
-    	
-    	return false;
-    });
-});
+<script type="application/json" id="eventjson">
+{{json|safe}}
 </script>
- -->
+<script type="text/javascript" src="/js/jquery-1.9.1.min.js"></script>
+<script type="text/javascript" src="/js/logging.js"></script>
 {% endblock %}
