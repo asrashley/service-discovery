@@ -141,7 +141,7 @@ class EventLog(ndb.Model):
         for entry in self.entries:
             if entry.event=='start':
                 start = entry
-            elif entry.event==event:
+            elif entry.event==event and start is not None:
                 times.append((entry.timestamp - start.timestamp).total_seconds())
                 start = None
         if len(times):
