@@ -43,20 +43,20 @@ class DateTimeTests(unittest.TestCase):
 class TestEventLog(GAETestCase):
     def test_as_dict(self):
         date_str = "2013-07-25T09:57:31Z"
-        le = models.LogEntry(event='start', timestamp=from_isodatetime(date_str))
-        self.assertEqual(le.timestamp.year, 2013)
-        self.assertEqual(le.timestamp.month, 7)
-        self.assertEqual(le.timestamp.day, 25)
+        le = models.LogEntry(ev='start', ts=from_isodatetime(date_str))
+        self.assertEqual(le.ts.year, 2013)
+        self.assertEqual(le.ts.month, 7)
+        self.assertEqual(le.ts.day, 25)
         d = le.as_dict()
         self.assertEqual(d['ts'],date_str)
-        self.assertEqual(d['ev'],le.event)
+        self.assertEqual(d['ev'],le.ev)
                              
     def test_sort(self):
-        entries = [ models.LogEntry(event='start', timestamp=from_isodatetime("2013-07-25T09:57:31Z")),
-                   models.LogEntry(event='end', timestamp=from_isodatetime("2013-07-25T09:57:44Z")),
-                   models.LogEntry(event='upnp', timestamp=from_isodatetime("2013-07-25T09:57:31Z")),
-                   models.LogEntry(event='cloud', timestamp=from_isodatetime("2013-07-25T09:57:31Z")),
-                   models.LogEntry(event='zeroconf', timestamp=from_isodatetime("2013-07-25T09:57:43Z")),
+        entries = [ models.LogEntry(ev='start', ts=from_isodatetime("2013-07-25T09:57:31Z")),
+                   models.LogEntry(ev='end', ts=from_isodatetime("2013-07-25T09:57:44Z")),
+                   models.LogEntry(ev='upnp', ts=from_isodatetime("2013-07-25T09:57:31Z")),
+                   models.LogEntry(ev='cloud', ts=from_isodatetime("2013-07-25T09:57:31Z")),
+                   models.LogEntry(ev='zeroconf', ts=from_isodatetime("2013-07-25T09:57:43Z")),
                    ]
         
         self.assertLess(entries[0], entries[1])
@@ -71,8 +71,8 @@ class TestEventLog(GAETestCase):
         #print log.entries
         for e in log.entries:
             if tc is not None:
-                self.assertGreaterEqual(e.timestamp, tc)
-            tc = e.timestamp
+                self.assertGreaterEqual(e.ts, tc)
+            tc = e.ts
         
 if __name__ == '__main__':
     unittest.main()        

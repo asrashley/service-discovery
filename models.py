@@ -81,52 +81,52 @@ class ApiAuthorisation(ndb.Model):
 @functools.total_ordering
 class LogEntry(ndb.Model):
     EVENT_TYPES = ['start','zeroconf','upnp','cloud','end']
-    event = ndb.StringProperty('ev',required=True, choices=EVENT_TYPES, verbose_name="Event type")
-    timestamp = ndb.DateTimeProperty('ts', required=True, verbose_name="Timestamp")
+    ev = ndb.StringProperty('ev',required=True, choices=EVENT_TYPES, verbose_name="Event type")
+    ts = ndb.DateTimeProperty('ts', required=True, verbose_name="Timestamp")
     
     def as_dict(self):
-        ts = self.timestamp.isoformat()
-        if not self.timestamp.utcoffset():
+        ts = self.ts.isoformat()
+        if not self.ts.utcoffset():
             ts += 'Z'
-        return {"ev":self.event, "ts":ts}
+        return {"ev":self.ev, "ts":ts}
     
     def __hash__(self):
-        return self.timestamp.__hash__() ^ self.EVENT_TYPES.index(self.event)
+        return self.ts.__hash__() ^ self.EVENT_TYPES.index(self.ev)
     
     def __eq__(self, other):
         if isinstance(other,LogEntry):
-            return self.timestamp==other.timestamp and self.event==other.event
+            return self.ts==other.ts and self.ev==other.ev
         return NotImplemented
     
     def __lt__(self,other):
         if not isinstance(other,LogEntry):
             return NotImplemented
-        delta = self.timestamp - other.timestamp
-        #print self.timestamp,other.timestamp,delta
+        delta = self.ts - other.ts
+        #print self.ts,other.ts,delta
         if delta.days<0 or delta.seconds<0 or delta.microseconds<0:
             return True
         if delta.days==0 and delta.seconds==0 and delta.microseconds==0:
-            return self.EVENT_TYPES.index(self.event) < self.EVENT_TYPES.index(other.event)
+            return self.EVENT_TYPES.index(self.ev) < self.EVENT_TYPES.index(other.ev)
         return False
 
     def __le__(self,other):
         if not isinstance(other,LogEntry):
             return NotImplemented
-        delta = self.timestamp - other.timestamp
+        delta = self.ts - other.ts
         if delta.days<0 or delta.seconds<0 or delta.microseconds<0:
             return True
         if delta.days==0 and delta.seconds==0 and delta.microseconds==0:
-            return EVENT_TYPES.index(self.event) <= EVENT_TYPES.index(other.event)
+            return EVENT_TYPES.index(self.ev) <= EVENT_TYPES.index(other.ev)
         return False
         
         
     #def __cmp__(self,other):
     #    if other is None:
     #        return 1
-    #    delta = self.timestamp - other.timestamp
+    #    delta = self.ts - other.ts
     #    if delta.days==0 and delta.seconds==0:
     #        if delta.microseconds==0:
-    #            return EVENT_TYPES.index(self.event) - EVENT_TYPES.index(other.event)
+    #            return EVENT_TYPES.index(self.ev) - EVENT_TYPES.index(other.ev)
     #        return delta.microseconds
     #    return int(delta.total_seconds())
 
@@ -165,7 +165,7 @@ class EventLog(ndb.Model):
             event = 'start'
         rv=0
         for entry in self.entries:
-            if entry.event==event:
+            if entry.ev==event:
                 rv += 1
         return rv
         
@@ -175,10 +175,10 @@ class EventLog(ndb.Model):
         start = None
         times=[]
         for entry in self.entries:
-            if entry.event=='start':
+            if entry.ev=='start':
                 start = entry
-            elif entry.event==event and start is not None:
-                times.append((entry.timestamp - start.timestamp).total_seconds())
+            elif entry.ev==event and start is not None:
+                times.append((entry.ts - start.ts).total_seconds())
                 start = None
         if len(times):
             avg = math.fsum(times) / len(times)

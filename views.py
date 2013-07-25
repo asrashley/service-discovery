@@ -30,40 +30,52 @@ templates = jinja2.Environment(
 
 NetworkServiceForm = model_form(NetworkService, exclude=('md','pt',))
 
-def flatten(items):
+def flatten_model(model, instance):
+    field_names = model._properties.keys()
+    rv = {} 
+    for k in field_names:
+        value = getattr(instance, k)
+        
+        rv[k] = flatten(value)
+    return rv
+
+def flatten(item):
     """Converts an object in to a form suitable for storage.
     flatten will take a dictionary, list or tuple and inspect each item in the object looking for
     items such as datetime.datetime objects that need to be converted to a canonical form before
     they can be processed for storage.
     """
-    if isinstance(items,dict):
+    rv=item
+    if isinstance(item,dict):
         rv={}
-    else:
+        for key,val in item.iteritems():
+            rv[key] = flatten(val)
+    elif isinstance(item,(list,tuple)):
         rv = []
-    for item in items:
-        key = None
-        if isinstance(items,dict):
-            key = item
-            item = items[key]
-        if isinstance(item,(datetime.datetime,datetime.time)):
-            iso = item.isoformat()
-            if not item.utcoffset():
-                iso += 'Z'
-            item = iso
-        elif isinstance(item,(datetime.date)):
-            item = item.isoformat()
-        elif isinstance(item,long):
-            item = '%d'%item
-        elif isinstance(item,(unicode,str,decimal.Decimal)):
-            item = str(item).replace("'","\'")
-        elif isinstance(item,(dict,list)):
-            item = flatten(item)
-        if key:
-            rv[key]=item
-        else:
-            rv.append(item)
-    if items.__class__ == tuple:
-        return tuple(rv)
+        for val in item:
+            rv.append(flatten(val))
+        if item.__class__ == tuple:
+            rv = tuple(rv)
+    elif isinstance(item,ndb.Model):
+        field_names = item._properties.keys()
+        rv = {} 
+        for k in field_names:
+            value = getattr(item, k)
+            rv[k] = flatten(value)
+    elif isinstance(item,ndb.GeoPt):
+        rv = {'lat':item.lat, 'lon':item.lon}
+    elif isinstance(item,(datetime.datetime,datetime.time)):
+        rv = item.isoformat()
+        if not item.utcoffset():
+            rv += 'Z'
+    elif isinstance(item,(datetime.date)):
+        rv = item.isoformat()
+    #elif isinstance(item,long):
+    #    rv = '%d'%item
+    elif isinstance(item,(unicode,str,decimal.Decimal)):
+        rv = str(item).replace("'","\'")
+    elif isinstance(item,(dict,list,tuple)):
+        rv = flatten(item)
     return rv
 
 def from_isodatetime(date_time):
@@ -584,6 +596,7 @@ class Logging(RequestHandler):
         return template.render(dict(error=str(exception), title="Search for devices"))
 
     def render_json(handler,logs,next=None,prev=None):
+        logs = [flatten_model(EventLog,log) for log in logs]
         return json.dumps(dict(logs=logs,next=next,prev=prev))
 
     def render_html(**kwargs):
@@ -718,7 +731,7 @@ class Logging(RequestHandler):
                         del event['method']
                     # cause a ValueError exception if the event type is invalid
                     LogEntry.EVENT_TYPES.index(event['event'])                    
-                    le = LogEntry(timestamp=timestamp, event=event['event'])
+                    le = LogEntry(ts=timestamp, ev=event['event'])
                     log.entries.append(le)
                 try:
                     log.extra = data['extra']
@@ -734,7 +747,7 @@ class Logging(RequestHandler):
                              timestamp = from_isodatetime(event['time'])
                              if event['event']=='found' and event.has_key('method'):
                                  event['event'] = event['method']
-                             le = LogEntry(timestamp=timestamp, event=event['event'])
+                             le = LogEntry(ts=timestamp, ev=event['event'])
                              clog.entries.append(le)
                          clog.put()
                 except KeyError:
