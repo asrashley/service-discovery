@@ -1,4 +1,4 @@
-import logging, datetime, math
+import logging, datetime, math, functools
 
 from google.appengine.ext import ndb
 from google.appengine.api import search
@@ -78,29 +78,57 @@ class ApiAuthorisation(ndb.Model):
     created = ndb.DateTimeProperty('n',auto_now_add=True,indexed=False)
     last_update = ndb.DateTimeProperty('l',auto_now=True,indexed=False)
     
-
+@functools.total_ordering
 class LogEntry(ndb.Model):
-    event = ndb.StringProperty('ev',required=True, choices=['start','zeroconf','upnp','cloud','end'], verbose_name="Event type")
+    EVENT_TYPES = ['start','zeroconf','upnp','cloud','end']
+    event = ndb.StringProperty('ev',required=True, choices=EVENT_TYPES, verbose_name="Event type")
     timestamp = ndb.DateTimeProperty('ts', required=True, verbose_name="Timestamp")
     
     def as_dict(self):
-        return {"ev":self.event, "ts":self.timestamp.isoformat()}
+        ts = self.timestamp.isoformat()
+        if not self.timestamp.utcoffset():
+            ts += 'Z'
+        return {"ev":self.event, "ts":ts}
     
-    @classmethod
-    def cmp(clz,a,b):
-        if a is None and b is None:
-            return 0
-        if b is None:
-            return 1
-        if a is None:
-            return -1
-        try:
-            delta = a.timestamp - b.timestamp
-        except AttributeError:
-            delta = a['ts'] - b['ts']
-        if delta.days==0 and delta.seconds==0:
-            return delta.microseconds
-        return int(delta.total_seconds())
+    def __hash__(self):
+        return self.timestamp.__hash__() ^ self.EVENT_TYPES.index(self.event)
+    
+    def __eq__(self, other):
+        if isinstance(other,LogEntry):
+            return self.timestamp==other.timestamp and self.event==other.event
+        return NotImplemented
+    
+    def __lt__(self,other):
+        if not isinstance(other,LogEntry):
+            return NotImplemented
+        delta = self.timestamp - other.timestamp
+        #print self.timestamp,other.timestamp,delta
+        if delta.days<0 or delta.seconds<0 or delta.microseconds<0:
+            return True
+        if delta.days==0 and delta.seconds==0 and delta.microseconds==0:
+            return self.EVENT_TYPES.index(self.event) < self.EVENT_TYPES.index(other.event)
+        return False
+
+    def __le__(self,other):
+        if not isinstance(other,LogEntry):
+            return NotImplemented
+        delta = self.timestamp - other.timestamp
+        if delta.days<0 or delta.seconds<0 or delta.microseconds<0:
+            return True
+        if delta.days==0 and delta.seconds==0 and delta.microseconds==0:
+            return EVENT_TYPES.index(self.event) <= EVENT_TYPES.index(other.event)
+        return False
+        
+        
+    #def __cmp__(self,other):
+    #    if other is None:
+    #        return 1
+    #    delta = self.timestamp - other.timestamp
+    #    if delta.days==0 and delta.seconds==0:
+    #        if delta.microseconds==0:
+    #            return EVENT_TYPES.index(self.event) - EVENT_TYPES.index(other.event)
+    #        return delta.microseconds
+    #    return int(delta.total_seconds())
 
 class EventLog(ndb.Model):
     uid = ndb.StringProperty(required=True, indexed=True)
@@ -124,6 +152,14 @@ class EventLog(ndb.Model):
         rv['events'] = [ e.as_dict() for e in self.entries]
         return rv
     
+    def sort_entries(self):
+        """Sort all the log entries in timestamp order and remove duplicates"""
+        #self.entries = list(set(self.entries))
+        self.entries.sort()
+        seen = set()
+        seen_add = seen.add
+        self.entries = [e for e in self.entries if e not in seen and not seen_add(e)]
+        
     def count(self, event=None):
         if event is None:
             event = 'start'
