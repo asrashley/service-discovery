@@ -81,6 +81,10 @@ def from_isodatetime(date_time):
         return datetime.timedelta(seconds=secs)
     if 'T' in date_time:
         try:
+            return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%M:%S.%fZ")
+        except ValueError:
+            pass
+        try:
             return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%M:%SZ")
         except ValueError:
             return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%MZ")        
@@ -588,7 +592,7 @@ class Logging(RequestHandler):
         #parent="logging" if context.has_key("date") else "home"
         context = handler.create_context()
         context.update(kwargs)        
-        context['json']= json.dumps([l.as_dict() for l in kwargs['logs']])
+        context['json']= json.dumps([l.as_dict() for l in kwargs['logs']],indent=2)
         template = templates.get_template('logging.html')
         return template.render(context)
 
@@ -665,7 +669,7 @@ class Logging(RequestHandler):
                 log = EventLog.query(EventLog._key==ndb.Key(EventLog,id)).get()
                 if not log:
                     log = EventLog(id=id, entries=[], uid=uid, date=start_time, client=False)
-                log.entries.sort(LogEntry.cmp)
+                #log.sort_entries()
                 cache[id] = log
             return log
         
@@ -711,6 +715,9 @@ class Logging(RequestHandler):
                     timestamp = from_isodatetime(event['time'])
                     if event['event']=='found' and event.has_key('method'):
                         event['event'] = event['method']
+                        del event['method']
+                    # cause a ValueError exception if the event type is invalid
+                    LogEntry.EVENT_TYPES.index(event['event'])                    
                     le = LogEntry(timestamp=timestamp, event=event['event'])
                     log.entries.append(le)
                 try:
@@ -733,13 +740,15 @@ class Logging(RequestHandler):
                 except KeyError:
                     pass
             for log in cache.values():
-                log.entries.sort(LogEntry.cmp)
+                log.sort_entries()
                 log.put()
             self.response.content_type='text/plain'
             self.response.write('logs accepted')                                             
-        except KeyError,e:
-            self.response.status=400
-            logging.error(str(e))
+        except (ValueError,KeyError),e:
+            self.response.content_type='text/plain'
+            self.response.write('Invalid data: %s'%(str(e)))                                             
+            #self.response.status=400
+            #logging.error(str(e))
         
         
 class MaintenanceWorker(webapp2.RequestHandler):
