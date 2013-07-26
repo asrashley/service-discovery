@@ -143,6 +143,8 @@ class EventLog(ndb.Model):
     
     def as_dict(self):
         rv = {"uid":self.uid, 
+              "name":self.name,
+              "client":self.client,
               "date":self.date.isoformat(), 
               "location": dict(lat=self.loc.lat, lon=self.loc.lon),
               "city":self.city,
