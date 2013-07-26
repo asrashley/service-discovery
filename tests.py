@@ -1,7 +1,7 @@
 import unittest, datetime
 
 from google.appengine.api import memcache
-from google.appengine.ext import db
+from google.appengine.ext import ndb
 from google.appengine.ext import testbed
 
 import models
@@ -50,7 +50,41 @@ class TestEventLog(GAETestCase):
         d = le.as_dict()
         self.assertEqual(d['ts'],date_str)
         self.assertEqual(d['ev'],le.ev)
-                             
+        extra={"dhcp": {
+            "dns2": "172.20.0.106",
+            "dns1": "172.20.0.102",
+            "gatewayIP": "172.20.0.1",
+            "gatewayMAC": "00:90:0b:25:6c:f6",
+            "netmask": "255.255.248.0",
+            "address": "172.20.4.42"
+        },
+        "client": {
+            "uid": "af290300-bef5-4bfd-838c-e05c3c99f73e"
+        },
+        "wifi": {
+            "ip": "172.20.4.42",
+            "mac": "60:a4:4c:91:a5:c3",
+            "bssid": "02:e6:fe:91:a5:c3"
+        }}
+        ev = models.EventLog(uid='8c9cdea2-5528-4579-a9e1-9abe1bcf5e72',
+                      date=from_isodatetime("2013-07-25T09:57:31Z"),
+                      client=False,
+                      name="Test device",
+                      loc=ndb.GeoPt(51.52,0.11),
+                      city= "London",
+                      addr='172.20.4.42',
+                      entries=[le],
+                      extra=extra)
+        d=ev.as_dict()
+        for field in ['uid','date','client','name','city']:
+            value = getattr(ev,field)
+            if isinstance(value,datetime.datetime):
+                value = value.isoformat()
+            self.assertEqual(value,d[field])
+        self.assertEqual(d['publicAddress'],ev.addr)
+        self.assertEqual(d['location']['lat'],ev.loc.lat)
+        self.assertEqual(d['location']['lon'],ev.loc.lon)
+        
     def test_sort(self):
         entries = [ models.LogEntry(ev='start', ts=from_isodatetime("2013-07-25T09:57:31Z")),
                    models.LogEntry(ev='end', ts=from_isodatetime("2013-07-25T09:57:44Z")),

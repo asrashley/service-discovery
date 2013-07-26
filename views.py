@@ -18,7 +18,8 @@ import mimerender
 from models import NetworkService, ApiAuthorisation, ServiceLocation, LogEntry, EventLog
 from serviceparser import parse_service_list, parse_contact_list
 from settings import cookie_secret, csrf_secret
-from routes import routes 
+from routes import routes
+from utils import on_production_server, flatten, from_isodatetime
 
 mimerender = mimerender.Webapp2MimeRender()
 
@@ -29,84 +30,6 @@ templates = jinja2.Environment(
                                extensions=['jinja2.ext.autoescape'])
 
 NetworkServiceForm = model_form(NetworkService, exclude=('md','pt',))
-
-def flatten_model(model, instance):
-    field_names = model._properties.keys()
-    rv = {} 
-    for k in field_names:
-        value = getattr(instance, k)
-        
-        rv[k] = flatten(value)
-    return rv
-
-def flatten(item):
-    """Converts an object in to a form suitable for storage.
-    flatten will take a dictionary, list or tuple and inspect each item in the object looking for
-    items such as datetime.datetime objects that need to be converted to a canonical form before
-    they can be processed for storage.
-    """
-    rv=item
-    if isinstance(item,dict):
-        rv={}
-        for key,val in item.iteritems():
-            rv[key] = flatten(val)
-    elif isinstance(item,(list,tuple)):
-        rv = []
-        for val in item:
-            rv.append(flatten(val))
-        if item.__class__ == tuple:
-            rv = tuple(rv)
-    elif isinstance(item,ndb.Model):
-        field_names = item._properties.keys()
-        rv = {} 
-        for k in field_names:
-            value = getattr(item, k)
-            rv[k] = flatten(value)
-    elif isinstance(item,ndb.GeoPt):
-        rv = {'lat':item.lat, 'lon':item.lon}
-    elif isinstance(item,(datetime.datetime,datetime.time)):
-        rv = item.isoformat()
-        if not item.utcoffset():
-            rv += 'Z'
-    elif isinstance(item,(datetime.date)):
-        rv = item.isoformat()
-    #elif isinstance(item,long):
-    #    rv = '%d'%item
-    elif isinstance(item,(unicode,str,decimal.Decimal)):
-        rv = str(item).replace("'","\'")
-    elif isinstance(item,(dict,list,tuple)):
-        rv = flatten(item)
-    return rv
-
-def from_isodatetime(date_time):
-    """
-    Convert an ISO formated date string to a datetime.datetime object
-    """
-    if not date_time:
-        return None
-    if date_time[:2]=='PT':
-        if 'M' in date_time:
-            dt = datetime.datetime.strptime(date_time, "PT%HH%MM%SS")
-        else:
-            dt = datetime.datetime.strptime(date_time, "PT%H:%M:%S")
-        secs = (dt.hour*60+dt.minute)*60 + dt.second
-        return datetime.timedelta(seconds=secs)
-    if 'T' in date_time:
-        try:
-            return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%M:%S.%fZ")
-        except ValueError:
-            pass
-        try:
-            return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%M:%SZ")
-        except ValueError:
-            return datetime.datetime.strptime(date_time, "%Y-%m-%dT%H:%MZ")        
-    if not 'Z' in date_time:
-        try:
-            return datetime.datetime.strptime(date_time, "%Y-%m-%d")
-        except ValueError:
-            return datetime.datetime.strptime(date_time, "%d/%m/%Y")
-    return datetime.datetime.strptime(date_time, "%H:%M:%SZ").time()
-
         
 class RequestHandler(webapp2.RequestHandler):
     CLIENT_COOKIE_NAME='discovery'
@@ -116,7 +39,8 @@ class RequestHandler(webapp2.RequestHandler):
         route = routes[self.request.route.name]
         context = {
                    "title": kwargs.get('title', route.title),
-                   "uri_for":self.uri_for
+                   "uri_for":self.uri_for,
+                   "on_production_server":on_production_server
                    }
         #parent = app.router.match()
         #(route, args, kwargs)
@@ -596,7 +520,7 @@ class Logging(RequestHandler):
         return template.render(dict(error=str(exception), title="Search for devices"))
 
     def render_json(handler,logs,next=None,prev=None):
-        logs = [flatten_model(EventLog,log) for log in logs]
+        logs = [flatten(log) for log in logs]
         return json.dumps(dict(logs=logs,next=next,prev=prev))
 
     def render_html(**kwargs):
@@ -649,7 +573,7 @@ class Logging(RequestHandler):
                 if log.loc.lat or log.loc.lon:
                     context['map'] = True
                     context['info']['location'] = log.loc
-                for f in ['addr','name','city']:
+                for f in ['addr','name','city','client']:
                     if getattr(log,f):
                         context['info'][f] = getattr(log,f) 
                 if log.extra:
@@ -669,23 +593,41 @@ class Logging(RequestHandler):
         #template = templates.get_template('logging.html')
         #self.response.write(template.render(context))
 
+    def make_key(self, uid, start_time):
+        return ('u%s%s'%(uid,start_time.date().isoformat())).replace('-','')
+        
+    def get_log_entry(self, uid, start_time):
+        log=None
+        try:
+            id = self.make_key(uid,start_time)
+            log = self.cache[id]
+        except KeyError:                        
+            log = EventLog.query(EventLog._key==ndb.Key(EventLog,id)).get()
+            if not log:
+                log = EventLog(id=id, entries=[], uid=uid, date=start_time, client=False)
+            #log.sort_entries()
+            self.cache[id] = log
+        return log
+        
+    def set_location_fields(self,log):
+        try:
+            lat,lng = self.request.headers['X-AppEngine-CityLatLong'].split(',')
+            log.loc = ndb.GeoPt(float(lat),float(lng))
+        except (KeyError, ValueError):
+            if log.loc is None:
+                log.loc = ndb.GeoPt(0,0)
+                #log.loc = ndb.GeoPt(51.52,0.11)
+        log.addr = self.request.remote_addr
+        try: 
+            log.city = ', '.join([self.request.headers['X-AppEngine-City'],
+                                  self.request.headers['X-AppEngine-Region'],
+                                  self.request.headers['X-AppEngine-Country']])
+        except KeyError,e:
+            logging.debug(str(e))
+            # These geo-ip headers don't exist on the dev server
+            pass
+        
     def post(self):
-        def make_key(uid, start_time):
-            return ('u%s%s'%(uid,start_time.date().isoformat())).replace('-','')
-        
-        def get_log_entry(uid, start_time):
-            log=None
-            try:
-                id = make_key(uid,start_time)
-                log = cache[id]
-            except KeyError:                        
-                log = EventLog.query(EventLog._key==ndb.Key(EventLog,id)).get()
-                if not log:
-                    log = EventLog(id=id, entries=[], uid=uid, date=start_time, client=False)
-                #log.sort_entries()
-                cache[id] = log
-            return log
-        
         if self.request.content_type!='application/json':
             self.response.status=400
             logging.error('invalid content type %s'%self.request.content_type)
@@ -696,6 +638,7 @@ class Logging(RequestHandler):
             self.response.headers['WWW-Authenticate']='SRV'
             self.error(401)
             return
+        self.cache = {}
         data = json.load(self.request.body_file)
         #{"devices":[{"date":"2013-07-22T11:40:51Z","uid":"4d9cf5f4-4574-4381-9df3-1d6e7ca295ff","events":[{"time":"2013-07-22T11:40:51Z","event":"start"},{"method":"upnp","time":"2013-07-22T11:40:53Z","event":"found"},{"method":"cloud","time":"2013-07-22T11:40:53Z","event":"found"},{"time":"2013-07-22T11:40:53Z","event":"end"},{"method":"zeroconf","time":"2013-07-22T11:40:59Z","event":"found"}]}],"extra":{"client":{"uid":"af290300-bef5-4bfd-838c-e05c3c99f73e"},"dhcp":{"dns1":"172.20.0.102","dns2":"172.20.0.106","gatewayMAC":"00:90:0b:25:6c:f6","gatewayIP":"172.20.0.1","address":"172.20.4.42","netmask":"255.255.248.0"},"wifi":{"bssid":"02:e6:fe:91:a5:c3","mac":"60:a4:4c:91:a5:c3","ip":"172.20.4.42"}}}
         try:
@@ -703,27 +646,12 @@ class Logging(RequestHandler):
             for dev in data['devices']:
                 uid = dev['uid']
                 start_time = from_isodatetime(dev['date'])
-                log = get_log_entry(uid, start_time)
-                try:
-                    lat,lng = self.request.headers['X-AppEngine-CityLatLong'].split(',')
-                    log.loc = ndb.GeoPt(float(lat),float(lng))
-                except (KeyError, ValueError):
-                    if log.loc is None:
-                        log.loc = ndb.GeoPt(0,0)
-                    #log.loc = ndb.GeoPt(51.52,0.11)
+                log = self.get_log_entry(uid, start_time)
                 try:
                     log.name = dev['name']
                 except KeyError:
                     pass
-                log.addr = self.request.remote_addr
-                try: 
-                    log.city = ', '.join([self.request.headers['X-AppEngine-City'],
-                                          self.request.headers['X-AppEngine-Region'],
-                                          self.request.headers['X-AppEngine-Country']])
-                except KeyError,e:
-                    logging.debug(str(e))
-                    # These geo-ip headers don't exist on the dev server
-                    pass
+                self.set_location_fields(log)
                 for event in dev['events']:
                     timestamp = from_isodatetime(event['time'])
                     if event['event']=='found' and event.has_key('method'):
@@ -734,34 +662,42 @@ class Logging(RequestHandler):
                     le = LogEntry(ts=timestamp, ev=event['event'])
                     log.entries.append(le)
                 try:
-                    log.extra = data['extra']
-                    if data['extra'].has_key('client'):
-                         puid = data['extra']['client']['uid']
-                         clog = get_log_entry(puid, start_time)
-                         clog.client=True
-                         clog.addr = log.addr
-                         clog.city = log.city
-                         clog.loc = log.loc
-                         clog.extra = data['extra']
-                         for event in dev['events']:
-                             timestamp = from_isodatetime(event['time'])
-                             if event['event']=='found' and event.has_key('method'):
-                                 event['event'] = event['method']
-                             le = LogEntry(ts=timestamp, ev=event['event'])
-                             clog.entries.append(le)
-                         clog.put()
-                except KeyError:
+                    if log.extra is None:
+                        log.extra = {}
+                    log.extra.update(data['extra'])
+                    if log.extra.has_key('client'):
+                        del log.extra['client']
+                except KeyError,e:
+                    logging.info(str(e))
                     pass
-            for log in cache.values():
+            try:
+                puid = data['extra']['client']['uid']
+                start_time = data['extra']['client'].get('date', datetime.datetime.now())
+                clog = self.get_log_entry(puid, start_time)
+                clog.client=True
+                self.set_location_fields(clog)
+                clog.extra = {}
+                clog.extra.update(data['extra'])
+                del clog.extra['client']
+                clog.extra['locations']=[]
+                q = ServiceLocation.query(ServiceLocation.public_address==self.request.remote_addr)
+                #ServiceLocation.country==self.request.headers['X-AppEngine-country'])
+                for ns in q:
+                    clog.extra['locations'].append({'uid':ns.uid,'addresses':ns.internal_addresses})
+            except KeyError,e:
+                logging.info(str(e))
+                pass
+            for log in self.cache.values():
                 log.sort_entries()
+                #logging.info('log for %s'%log.uid)
                 log.put()
             self.response.content_type='text/plain'
             self.response.write('logs accepted')                                             
         except (ValueError,KeyError),e:
             self.response.content_type='text/plain'
             self.response.write('Invalid data: %s'%(str(e)))                                             
-            #self.response.status=400
-            #logging.error(str(e))
+            self.response.status=400
+            logging.error(str(e))
         
         
 class MaintenanceWorker(webapp2.RequestHandler):
