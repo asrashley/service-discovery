@@ -12,7 +12,7 @@ a.balloon {
     width: 26em;
     background-color: white;
     border: 1px solid #333;
-    box-shadow: 2px 2px 0 0 #555;        
+    box-shadow: 2px 2px 0 0 #555;
 }
 .popup .uid {
     font-size: 85%;
@@ -142,23 +142,21 @@ src="/img/radio_silhouette.png" alt="device" title="Device results" {% endif %} 
 </div>
 {% endblock %}
 {% block scripts %}
-{% if map %}
-<script type="text/javascript"
-      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGHHsMx3K8yXH7aBg-GBQWm1NPgM4xXq4&sensor=false">
-</script>
+  <script type="text/javascript" src="/js/dev/jquery-1.10.2.js"></script>
+  <script type="text/javascript" src="/js/dev/handlebars.js"></script>
+  <script type="text/javascript" src="/js/dev/ember-1.0.0-rc.6.js"></script>
+  <script type="text/javascript" src="/js/dev/ember-data-0.13.js"></script>
+  <script type="text/javascript" src="/js/dev/moment.js"></script>
+  <script type="text/javascript" src="/js/models.js"></script>
+  <script type="text/javascript" src="/js/controllers.js"></script>
+  <script type="text/javascript" src="/js/routes.js"></script>
 <script type="text/javascript">
-google.maps.event.addDomListener(window, 'load', function() {
-        var mapOptions = {
-          center: new google.maps.LatLng({{info.location.lat}}, {{info.location.lon}}),
-          zoom: 12,
-          mapTypeId: google.maps.MapTypeId.ROADMAP
-        };
-        var map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
-      });
-</script>
+DS.RESTAdapter.reopen({
+  namespace: "{{uri_for('logging')[1:-1]}}"
+});
+{% if not on_production_server %}
+Ember.LOG_BINDING = true;
 {% endif %}
-<script type="application/json" id="eventjson">
-{{json|safe}}
 </script>
 <script type="text/javascript" src="/js/jquery-1.9.1.min.js"></script>
 <script type="text/javascript" src="/js/logging.js"></script>
