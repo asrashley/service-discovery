@@ -649,7 +649,6 @@ class Logging(RequestHandler):
         data = json.load(self.request.body_file)
         #{"devices":[{"date":"2013-07-22T11:40:51Z","uid":"4d9cf5f4-4574-4381-9df3-1d6e7ca295ff","events":[{"time":"2013-07-22T11:40:51Z","event":"start"},{"method":"upnp","time":"2013-07-22T11:40:53Z","event":"found"},{"method":"cloud","time":"2013-07-22T11:40:53Z","event":"found"},{"time":"2013-07-22T11:40:53Z","event":"end"},{"method":"zeroconf","time":"2013-07-22T11:40:59Z","event":"found"}]}],"extra":{"client":{"uid":"af290300-bef5-4bfd-838c-e05c3c99f73e"},"dhcp":{"dns1":"172.20.0.102","dns2":"172.20.0.106","gatewayMAC":"00:90:0b:25:6c:f6","gatewayIP":"172.20.0.1","address":"172.20.4.42","netmask":"255.255.248.0"},"wifi":{"bssid":"02:e6:fe:91:a5:c3","mac":"60:a4:4c:91:a5:c3","ip":"172.20.4.42"}}}
         try:
-            cache = {}
             for dev in data['devices']:
                 uid = dev['uid']
                 start_time = from_isodatetime(dev['date'])
@@ -707,7 +706,61 @@ class Logging(RequestHandler):
             self.response.write('Invalid data: %s'%(str(e)))                                             
             self.response.status=400
             logging.error(str(e))
+
+class UploadLogs(Logging):
+    class UploadHandler(blobstore_handlers.BlobstoreUploadHandler):            
+        def post(self):
+            context = self.outer.create_context()
+            upload_files = self.get_uploads('file')  # 'file' is file upload field in the form
+            if len(upload_files)==0:
+                self.outer.get()
+                return
+            blob_info = upload_files[0]
+            blob_reader = blobstore.BlobReader(blob_info.key())
+            try:
+                js = json.load(blob_reader)
+                self.outer.cache = {}
+                for event in js['event_logs']:
+                    uid = event['uid']
+                    start_time = from_isodatetime(event['date'])
+                    log = self.outer.get_log_entry(uid, start_time)
+                    for ev in event['entries']:
+                        le = LogEntry(ts=from_isodatetime(ev['ts']), ev=ev['ev'])
+                        log.entries.append(le)
+                    log.client = event['client']
+                    log.name = event['name']
+                    if event.has_key('loc') and event['loc'] is not None:
+                        log.loc = ndb.GeoPt(lat=event['loc']['lat'], lon=event['loc']['lon'])
+                    log.city = event['city']
+                    log.addr = event['addr']
+                    log.extra = event['extra']
+                values = self.outer.cache.values()
+                for log in values:
+                    log.sort_entries()
+                context['logs'] = values
+                ndb.put_multi(values)
+            except:
+                raise 
+            finally:
+                blob_reader.close()
+            template = templates.get_template('import-logs.html')
+            self.response.write(template.render(context))
+            
+    def __init__(self, request, response):
+        self.initialize(request, response)
+        self.upload_handler = self.UploadHandler(request, response)
+        self.upload_handler.outer = self
+        self.post = self.upload_handler.post
         
+    def get(self):
+        context = self.create_context()
+        if not users.is_current_user_admin():
+            context['error']='Only a site administrator can upload event logs'
+            template = templates.get_template('error.html')
+        else:
+            template = templates.get_template('import-logs.html')
+            context['upload_url'] = blobstore.create_upload_url(self.request.uri)
+        self.response.write(template.render(context))
         
 class MaintenanceWorker(webapp2.RequestHandler):
     def get(self):

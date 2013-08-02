@@ -1,0 +1,18 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+{% if logs %}
+<ul  id="networkservice" class="form" >
+{% for log in logs %}
+<li>{{log.uid}} </li>
+{% endfor %}
+</ul>
+{% else %}
+<form id="networkservice" class="form" method="post" enctype="multipart/form-data" action="{{upload_url}}">
+	<h1>Upload event logs</h1>
+	<p>Use this page to upload event logs from production JSON data.</p>
+		<label for="description">File</label><input type="file" name="file"/><br />
+		<input type="submit" name="submit" value="Upload" />
+</form>
+{% endif %}
+{% endblock %}

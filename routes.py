@@ -22,6 +22,7 @@ routes = {
     "registered":Route(r'/registered/', handler='views.RegistrationList', parent="home", title="Registered devices"),
     "channel":Route(r'/_ah/channel/<:(dis)?connected>/', handler='views.ChannelHandler', parent="home", title="channel"),
     "logging":Route(r'/logs/', handler='views.Logging', parent="home", title="Discovery logs"),
+    "upload-logs":Route(r'/logs/upload', handler='views.UploadLogs', parent="home", title="Upload discovery logs"),
     "all-logs":Route(r'/logs/event_logs', handler='views.LoggingAPI', parent="home", title="Discovery logs"),
     "log-by-id":Route(r'/logs/event_logs/<id:[\w\-]+>', handler='views.LoggingAPI', parent="home", title="Discovery logs"),
     "log-by-date":Route(r'/logs/event_logs/date/<date:\d{4}-\d+-\d+>', handler='views.LoggingAPI', parent="logging", title="Logs for date"),

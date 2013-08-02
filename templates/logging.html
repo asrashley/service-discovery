@@ -14,9 +14,6 @@ a.balloon {
     border: 1px solid #333;
     box-shadow: 2px 2px 0 0 #555;
 }
-.popup .uid {
-    font-size: 85%;
-}
 .balloon:hover .popup {
     display: block;
 }
@@ -100,14 +97,14 @@ a.back {
 {% block scripts %}
 {% raw %}
 <script type="text/template" id="event-row">
-        <td data-title="'Name'" sortable="name" class="<%= client?'client':'device' %>">
+        <td data-title="'Name'" sortable="name" class="devicetype <%= client?'client':'device' %>">
             <% if(client){ %>
             <img src="/img/smart_phone_simple.png" alt="client" title="Client results" />
             <% } else { %>
             <img src="/img/radio_silhouette.png" alt="device" title="Device results" />
             <% } %>
         </td>
-        <td class="uid clickable" data-title="'UID'" ><%-uid%></td>
+        <td class="uid clickable" data-title="'UID'" ><p><%-uid%></p></td>
         <td class="location" data-title="'Location'"><%-city%> (<%-addr%>)</td>
         <td class="date clickable" data-title="'Date'" sortable="date"><%= date.format("DD MMMM YYYY") %></td>
         <td class="count"><%=totalCount%></td>
@@ -122,24 +119,18 @@ a.back {
 <script type="text/template" id="event-foot">
     <tr class="logtotals">
         <td colspan="4" class="total">Total</td>
-        <td><%= totalCount %></td>
-        <td class="<%= (cloudCount<totalCount)?'failures':'' %>"><%= cloudCount %></td>
-        <td class="<%= (zeroconfCount<totalCount)?'failures':'' %>"><%= zeroconfCount %></td>
-        <td class="<%= (upnpCount<totalCount)?'failures':'' %>"><%= upnpCount %></td>
+        <td class="count"><%= totalCount %></td>
+        <td class="count <%= (cloudCount<totalCount)?'failures':'' %>"><%= cloudCount %></td>
+        <td class="count <%= (zeroconfCount<totalCount)?'failures':'' %>"><%= zeroconfCount %></td>
+        <td class="count <%= (upnpCount<totalCount)?'failures':'' %>"><%= upnpCount %></td>
         <td class="time"><%- cloudDuration %></td>
         <td class="time"><%- zeroconfDuration %></td>
         <td class="time"><%- upnpDuration %></td>
     </tr>
 </script>
 
-<script type="text/template" data-template-name="logs">
-    {{partial "listlogs"}}
-</script>
-<script type="text/template" data-template-name="date">
-    {{partial "listlogs"}}
-</script>
-<script type="text/template" data-template-name="log">
-    <span class="back">{{#linkTo 'logs'}}Back to summary{{/linkTo}}</span>
+<script type="text/template" id="event-detail">
+    <span class="back link">Back to summary</span>
     <table>
         <tr><td>Date</td><td>{{date}}</td></tr>
 {{#if name }}<tr><td>Friendly name</td><td>{{name}}</td></tr>{{/if}}

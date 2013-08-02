@@ -10,7 +10,11 @@
 		<p class="button" ><a href="{{uri_for('register',reg_type='api')}}">{{routes['register'].title}}</a></p>
 		<p class="button" ><a href="{{uri_for('add-service')}}">{{routes['add-service'].title}}</a></p>
 		<p class="button" ><a href="{{uri_for('upload-services')}}">{{routes['upload-services'].title}}</a></p>
-		<p class="button"><a href="/_ah/admin/">GAE admin</a></p>
+		{% if not on_production_server %}
+		<p class="button" ><a href="{{uri_for('upload-logs')}}">{{routes['upload-logs'].title}}</a></p>
+		{% endif %}
+		<p class="button"><a
+		    {% if on_production_server %}href="/_ah/admin/"{% else %}href="http://127.0.0.1:8000/"{% endif %}>GAE admin</a></p>
 	  {% endif %}
 	  <p class="button" id="pair"><a href="{{uri_for('unregister')}}">{{routes['unregister'].title}}</a></p>
 	{% else %}
