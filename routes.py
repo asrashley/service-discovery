@@ -21,10 +21,12 @@ routes = {
     "maintenance":Route(r'/work/maintenance', handler='views.MaintenanceWorker', parent="home", title="maintenance"),
     "registered":Route(r'/registered/', handler='views.RegistrationList', parent="home", title="Registered devices"),
     "channel":Route(r'/_ah/channel/<:(dis)?connected>/', handler='views.ChannelHandler', parent="home", title="channel"),
-    "logging":Route(r'/log/', handler='views.Logging', parent="home", title="Discovery logs"),
-    "log-by-date":Route(r'/log/<date:\d{4}-\d+-\d+>/', handler='views.Logging', parent="logging", title="Logs for date"),
+    "logging":Route(r'/logs/', handler='views.Logging', parent="home", title="Discovery logs"),
+    "all-logs":Route(r'/logs/event_logs', handler='views.LoggingAPI', parent="home", title="Discovery logs"),
+    "log-by-id":Route(r'/logs/event_logs/<id:[\w\-]+>', handler='views.LoggingAPI', parent="home", title="Discovery logs"),
+    "log-by-date":Route(r'/logs/event_logs/date/<date:\d{4}-\d+-\d+>', handler='views.LoggingAPI', parent="logging", title="Logs for date"),
     #UID 4d9cf5f4-4574-4381-9df3-1d6e7ca295ffe
-    "log-by-uid":Route(r'/log/<uid:[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+>/', handler='views.Logging', parent="logging", title="Logs for UUID"),
+    "log-by-uid":Route(r'/logs/event_logs/uid/<uid:[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+-[0-9a-f]+>', handler='views.LoggingAPI', parent="logging", title="Logs for UUID"),
     "home":Route(r'/', handler='views.MainPage', title="Service discovery"),
 }
 

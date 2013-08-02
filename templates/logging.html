@@ -57,16 +57,29 @@ a.back {
 #detail > h2 {
     margin-bottom: 1em;
 }
+.logtotals{
+    background-color: #CCCCCC;
+    font-weight: bold;
+}
+.logtotals .total {
+    text-align: right;
+}
 </style>
 {% endblock %}
 
 {% block content %}
-<div id="logging" >
-<table id="summary">
+<nav id="datesel">
+    <ul></ul>
+</nav>
+  <div id="logging" class="loading">
+      <h2 class="loading">Loading logging data...</h2>
+<table id="summary" class="table table-striped table-bordered table-condensed">
 <thead>
 <tr>
 <th class="devicetype" rowspan="2">Type</th>
-<th class="location" rowspan="2">Location</th><th class="date" rowspan="2">Date</th><th colspan="4">Number<br/>of<br />samples</th>
+<th class="uid clickable" rowspan="2">UID</th>
+<th class="location" rowspan="2">Location</th>
+<th class="date clickable" rowspan="2">Date</th><th colspan="4">Number of samples</th>
 <th colspan="3">Average duration</th></tr>
 <tr class="odd">
 <th>Total</th>
@@ -77,86 +90,93 @@ a.back {
 <th><img src="/img/bonjour.png" alt="ZeroConf" title="ZeroConf" /></th>
 <th><img src="/img/upnp.png" alt="UPnP" title="UPnP" /></th></tr></thead>
 <tbody>
-{% for log in logs %}
-<tr class="{{ loop.cycle('odd','even') }}" data-uid="{{log.uid}}" data-date="{{log.date.isoformat()}}"
-data-client="{{log.client|lower}}" {% if log.name %}data-name="{{log.name}}"{% endif %}>
-<td class="balloon devicetype {% if log.client %}client{% else %}device{% endif %}"><a href="{{uri_for('log-by-uid', uid=log.uid)}}"><img {% if log.client %}src="/img/smart_phone_simple.png" alt="client" title="Client results"{% else %}
-src="/img/radio_silhouette.png" alt="device" title="Device results" {% endif %} />
-<table class="popup">
-{% if log.name %}<tr><td>Friendly name</td><td>{{log.name}}</td></tr>{% endif %}
-<tr><td>UID</td><td class="uid">{{log.uid}}</td></tr>
-<tr><td>Public IP address</td><td class="ipaddress">{{log.addr}}</td></tr>
-<tr><td>Location</td><td class="location">{{log.city}}</td></tr>
-<tr><td>Lat,long</td><td class="location">{{log.loc}}</td></tr>
-{% if log.extra and log.extra.dhcp %}
-{% for k,v in log.extra.dhcp.iteritems() %}
-<tr><td>{{k}}</td><td class="extra">{{v}}</td></tr>
-{% endfor %}
-{% endif %}
+</tbody>
+<tfoot>
+</tfoot>
 </table>
-</a></td>
-<td class="location"><a href="{{uri_for('log-by-uid', uid=log.uid)}}">{{log.city}} ({{log.addr}})
-</a></td>
-<td class="date"><a href="{{uri_for('log-by-date', date=log.date.isoformat())}}">{{log.date}}</a></td>
-{% set total_count = log.count() %}
-<td class="count">{{total_count}}</td>
-{% set count = log.count('cloud') %}
-<td class="count {% if count<total_count %}failures{% endif %}">{{count}}</td>
-{% set count = log.count('zeroconf') %}
-<td class="count {% if count<total_count %}failures{% endif %}">{{count}}</td>
-{% set count = log.count('upnp') %}
-<td class="count {% if count<total_count %}failures{% endif %}">{{count}}</td>
-<td class="time">{% set dur = log.duration('cloud') %}{% if dur==None %}N/A{%else%}{{'%.03f'|format(dur)}}{%endif %}</td>
-<td class="time">{% set dur = log.duration('zeroconf') %}{% if dur==None %}N/A{%else%}{{'%.03f'|format(dur)}}{%endif %}</td>
-<td class="time">{% set dur = log.duration('upnp') %}{% if dur==None %}N/A{%else%}{{'%.03f'|format(dur)}}{%endif %}</td>
-</tr>
-{% endfor %}
-</tbody></table>
-{% if info %}
-<table>
-    {% if info.name %}<tr><td>Friendly name</td><td>{{info.name}}</td></tr>{% endif %}
-    <tr><td>UID</td><td class="uid">{{uid}}</td></tr>
-    <tr><td>Public IP address</td><td class="ipaddress">{{info.addr}}</td></tr>
-    <tr><td>City</td><td class="location">{{info.city}}</td></tr>
-    <tr><td>Location</td><td class="location">{{info.location}}</td></tr>
-    {% if info.extra and info.extra.dhcp %}
-        {% for k,v in info.extra.dhcp.iteritems() %}
-            <tr><td>DHCP {{k}}</td><td class="extra">{{v}}</td></tr>
-        {% endfor %}
-    {% endif %}
-    {% if info.extra and info.extra.wifi %}
-        {% for k,v in info.extra.wifi.iteritems() %}
-            <tr><td>Wifi {{k}}</td><td class="extra">{{v}}</td></tr>
-        {% endfor %}
-    {% endif %}
-</table>
-{% endif %}
-
-{% if prev %}<a href="?cursor={{prev}}" class="prev">Prev...</a>{% endif %}
-{% if next %}<a href="?cursor={{next}}" class="next">...More</a>{% endif %}
-{% if map %}
-<div id="map-canvas"/>
-{% if prev %}<a href="?cursor={{prev}}" class="prev">Prev...</a>{% endif %}
-{% if next %}<a href="?cursor={{next}}" class="next">...More</a>{% endif %}
-{% endif %}
-</div>
+  </div>
 {% endblock %}
+
 {% block scripts %}
+{% raw %}
+<script type="text/template" id="event-row">
+        <td data-title="'Name'" sortable="name" class="<%= client?'client':'device' %>">
+            <% if(client){ %>
+            <img src="/img/smart_phone_simple.png" alt="client" title="Client results" />
+            <% } else { %>
+            <img src="/img/radio_silhouette.png" alt="device" title="Device results" />
+            <% } %>
+        </td>
+        <td class="uid clickable" data-title="'UID'" ><%-uid%></td>
+        <td class="location" data-title="'Location'"><%-city%> (<%-addr%>)</td>
+        <td class="date clickable" data-title="'Date'" sortable="date"><%= date.format("DD MMMM YYYY") %></td>
+        <td class="count"><%=totalCount%></td>
+        <td class="count <%= (cloudCount<totalCount)?'failures':'' %>"><%-cloudCount%></td>
+        <td class="count <%= (zeroconfCount<totalCount)?'failures':'' %>"><%-zeroconfCount%></td>
+        <td class="count <%= (upnpCount<totalCount)?'failures':'' %>"><%-upnpCount%></td>
+        <td class="time"><%-model.cloudDuration()%></td>
+        <td class="time"><%-model.zeroconfDuration()%></td>
+        <td class="time"><%-model.upnpDuration()%></td>
+</script>
+
+<script type="text/template" id="event-foot">
+    <tr class="logtotals">
+        <td colspan="4" class="total">Total</td>
+        <td><%= totalCount %></td>
+        <td class="<%= (cloudCount<totalCount)?'failures':'' %>"><%= cloudCount %></td>
+        <td class="<%= (zeroconfCount<totalCount)?'failures':'' %>"><%= zeroconfCount %></td>
+        <td class="<%= (upnpCount<totalCount)?'failures':'' %>"><%= upnpCount %></td>
+        <td class="time"><%- cloudDuration %></td>
+        <td class="time"><%- zeroconfDuration %></td>
+        <td class="time"><%- upnpDuration %></td>
+    </tr>
+</script>
+
+<script type="text/template" data-template-name="logs">
+    {{partial "listlogs"}}
+</script>
+<script type="text/template" data-template-name="date">
+    {{partial "listlogs"}}
+</script>
+<script type="text/template" data-template-name="log">
+    <span class="back">{{#linkTo 'logs'}}Back to summary{{/linkTo}}</span>
+    <table>
+        <tr><td>Date</td><td>{{date}}</td></tr>
+{{#if name }}<tr><td>Friendly name</td><td>{{name}}</td></tr>{{/if}}
+<tr><td>UID</td><td class="uid clickable">{{uid}}</td></tr>
+<tr><td>Public IP address</td><td class="ipaddress">{{addr}}</td></tr>
+<tr><td>Location</td><td class="location">{{city}}</td></tr>
+<tr><td>Lat,long</td><td class="location">{{loc.lat}}, {{loc.lon}}</td></tr>
+{{#if extra }}
+{{#if extra.dhcp }}
+{{#key_value extra.dhcp}}
+<tr><td>DHCP {{key}}</td><td class="extra">{{value}}</td></tr>
+{{/key_value}}
+{{/if}}
+{{#if extra.wifi }}
+{{#key_value extra.wifi}}
+<tr><td>WiFi {{key}}</td><td class="extra">{{value}}</td></tr>
+{{/key_value}}
+{{/if}}
+{{/if}}
+</table>
+</script>
+
+{% endraw %}
   <script type="text/javascript" src="/js/dev/jquery-1.10.2.js"></script>
-  <script type="text/javascript" src="/js/dev/handlebars.js"></script>
-  <script type="text/javascript" src="/js/dev/ember-1.0.0-rc.6.js"></script>
-  <script type="text/javascript" src="/js/dev/ember-data-0.13.js"></script>
+  <script type="text/javascript" src="/js/dev/underscore.js"></script>
+  <script type="text/javascript" src="/js/dev/backbone.js"></script>
   <script type="text/javascript" src="/js/dev/moment.js"></script>
   <script type="text/javascript" src="/js/models.js"></script>
-  <script type="text/javascript" src="/js/controllers.js"></script>
+  <script type="text/javascript" src="/js/views.js"></script>
   <script type="text/javascript" src="/js/routes.js"></script>
 <script type="text/javascript">
-DS.RESTAdapter.reopen({
-  namespace: "{{uri_for('logging')[1:-1]}}"
-});
 {% if not on_production_server %}
-Ember.LOG_BINDING = true;
 {% endif %}
+  $(document).ready(function() {
+    App.appView = new App.AppView();
+    App.dateSelectView = new App.DateSelectView();
+  });
 </script>
 <script type="text/javascript" src="/js/jquery-1.9.1.min.js"></script>
 <script type="text/javascript" src="/js/logging.js"></script>

@@ -511,87 +511,94 @@ class RegistrationList(RequestHandler):
         template = templates.get_template('registration.html')
         self.response.write(template.render(context))
 
-class Logging(RequestHandler):
-    def render_json_exception(exception):
-        return json.dumps(dict(error=str(exception)))
-
-    def render_html_exception(exception):
-        template = templates.get_template('error.html')
-        return template.render(dict(error=str(exception), title="Search for devices"))
-
-    def render_json(handler,logs,next=None,prev=None):
-        logs = [flatten(log) for log in logs]
-        return json.dumps(dict(logs=logs,next=next,prev=prev))
-
-    def render_html(**kwargs):
-        handler=kwargs['handler']
-        del kwargs['handler']
-        #parent="logging" if context.has_key("date") else "home"
-        context = handler.create_context()
-        context.update(kwargs)        
-        context['json']= json.dumps([l.as_dict() for l in kwargs['logs']],indent=2)
-        template = templates.get_template('logging.html')
-        return template.render(context)
-
-    @mimerender.map_exceptions(
-                               mapping=[
-                                        (NotAuthorisedException,'401 Not authorised'),
-                                        ],
-                               html = render_html_exception,
-                               json = render_json_exception,
-                               )
-    @mimerender(
-                default = 'html',
-                html = render_html,
-                json = render_json,
-                )
-    def get(self, uid=None, date=None):
+class LoggingAPI(RequestHandler):
+    """REST API to access logging data
+    """
+    def get(self, uid=None, date=None, id=None):
         if not users.is_current_user_admin():
-            raise NotAuthorisedException('Only admins can use this service')
-        context = {'handler':self}
+            context['error']='Only a site administrator can use this service'
+            template = templates.get_template('error.html')
+        #context = {'handler':self}
         curs = Cursor(urlsafe=self.request.get('cursor'))
-        query = EventLog.query()
-        if uid is not None:
-            query = query.filter(EventLog.uid==uid)
-            #context["title_link"]=self.uri_for('logging')
-            context['uid'] = uid
-        try:
-            context['latlong'] = self.request.headers['X-AppEngine-CityLatLong'].split(',')
-        except KeyError:
-            pass
-        if date is not None:
-            date = from_isodatetime(date)
-        if date is not None:
-            context["title_link"]=self.uri_for('logging')
-            context["date"] = date
-            query = query.filter(EventLog.date==date)
-        logs, next_curs, next = query.order(EventLog.date).fetch_page(20, start_cursor=curs)
-        context["logs"] = logs
-        if uid and logs:
-            context['info']={}
-            for log in logs:
-                if log.loc.lat or log.loc.lon:
-                    context['map'] = True
-                    context['info']['location'] = log.loc
-                for f in ['addr','name','city','client']:
-                    if getattr(log,f):
-                        context['info'][f] = getattr(log,f) 
-                if log.extra:
-                    try:
-                        context['info']['extra'].update(log.extra)
-                    except KeyError:
-                        context['info']['extra']= dict(log.extra)                        
+        #try:
+        #    context['latlong'] = self.request.headers['X-AppEngine-CityLatLong'].split(',')
+        #except KeyError:
+        #    pass
+        if id is not None:
+            key = ndb.Key(urlsafe=id)
+            logs = [key.get()]
+            #context['id']=id
+        else:
+            query = EventLog.query()
+            if uid is not None:
+                query = query.filter(EventLog.uid==uid)
+                #context["title_link"]=self.uri_for('logging')
+                #context['uid'] = uid
+            if date is not None:
+                date = from_isodatetime(date)
+            if date is not None:
+                #context["title_link"]=self.uri_for('logging')
+                #context["date"] = date
+                query = query.filter(EventLog.date==date)
+            logs, next_curs, next = query.order(EventLog.date).fetch_page(20, start_cursor=curs)
+            #context["logs"] = logs
+            #if uid and logs:
+            #    context['info']={}
+            #    for log in logs:
+            #        if log.loc.lat or log.loc.lon:
+            #            context['map'] = True
+            #            context['info']['location'] = log.loc
+            #        for f in ['addr','name','city','client']:
+            #            if getattr(log,f):
+            #                context['info'][f] = getattr(log,f) 
+            #        if log.extra:
+            #            try:
+            #                context['info']['extra'].update(log.extra)
+            #            except KeyError:
+            #                context['info']['extra']= dict(log.extra)                        
         prev_curs=prev=None
         if self.request.get('cursor'):
             rev_curs = curs.reversed()
             logs2, prev_curs, prev = query.order(-EventLog.date).fetch_page(20, start_cursor=rev_curs)
-        if next_curs and next:
-            context["next"] = next_curs.urlsafe() 
-        if prev_curs and prev:
-            context["prev"] = prev_curs.urlsafe()
-        return context 
-        #template = templates.get_template('logging.html')
-        #self.response.write(template.render(context))
+        flogs = []
+        fentries = []
+        sideload=False
+        #TODO: add a header to detect Emberjs, which needs the events to be side-loaded
+        for log in logs:
+            fl = flatten(log)
+            fl['id'] = log.key.urlsafe()
+            flogs.append(fl)
+            if sideload:
+                keys = []
+                index=0
+                for e in fl['entries']:
+                    e['id'] = '#'.join([fl['id'],str(index)])
+                    keys.append(e['id'])
+                    fentries.append(e)
+                    index += 1
+                fl['event_ids'] = keys
+                del fl['entries']
+        if id is not None:
+            if sideload:
+                js = {'event_log':flogs[0],'events':fentries}
+            else:
+                js = flogs[0]
+        else:
+            js = { 'event_logs':flogs, 'meta':{} }
+            if next_curs and next:
+                js["meta"]["next"] = next_curs.urlsafe() 
+            if prev_curs and prev:
+                js["meta"]["prev"] = prev_curs.urlsafe()
+            if sideload:
+                js['events'] = fentries
+        self.response.content_type='application/json'
+        self.response.write(json.dumps(js))
+
+class Logging(RequestHandler):
+    def get(self):
+        context = self.create_context()
+        template = templates.get_template('logging.html')
+        self.response.write(template.render(context))
 
     def make_key(self, uid, start_time):
         return ('u%s%s'%(uid,start_time.date().isoformat())).replace('-','')
@@ -687,10 +694,12 @@ class Logging(RequestHandler):
             except KeyError,e:
                 logging.info(str(e))
                 pass
-            for log in self.cache.values():
+            values = self.cache.values()
+            for log in values:
                 log.sort_entries()
                 #logging.info('log for %s'%log.uid)
-                log.put()
+                #log.put()
+            ndb.put_multi(values)
             self.response.content_type='text/plain'
             self.response.write('logs accepted')                                             
         except (ValueError,KeyError),e:

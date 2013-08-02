@@ -98,10 +98,11 @@ a {
 .button.hover {
   /*background: darker;*/
   /*background: linear-gradient(top, #43a1f7 0%, #2e70c4 100%);*/
-  color: @mediumGrey; /* #43a1f7; */
+  /*color: @mediumGrey;*/ /* #43a1f7; */
+  .gradientV(darken(@blue,20%), #ddd);
   border: 1px solid #2e70c4;
   cursor: pointer;
-  text-shadow: 0 -1px 1px #2c6bbb;
+  /*text-shadow: 0 -1px 1px #2c6bbb;*/
 }
 .button:active,
 .button.active {
@@ -195,6 +196,7 @@ a {
 
 #logging {
     width: 45em;
+    display: inline-block;
     th {
         background: #333;
         color: white;
@@ -207,7 +209,26 @@ a {
         width: 3em;
     }
 }
-
+#datesel {
+  .form;
+  display: inline-block;
+  width: 12em;
+  /*height:20em;*/
+  vertical-align: top;
+  >ul {
+    margin:0;
+  }
+  >ul>li {
+    line-height: 1.25em;
+    height: 1.25em;
+    border: 1px solid #333;
+    margin: 0.2em 0;
+    padding: 0.25em;
+    width: 100%;
+    text-align: center;
+    left: 0;
+  }
+}
 #apiregistration {
   min-height: 22em;
   width:40em;
