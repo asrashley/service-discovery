@@ -29,7 +29,7 @@ App.EventLog = Backbone.Model.extend({
             response.date = moment(response.date);
         }
         response.entries = response.entries.map(function(item,index){
-           return new App.Event({ev:item.ev, ts:moment(item.ts), id:self.id+index});
+           return new App.Event({ev:item.ev, ts:moment(item.ts), id:response.id+index});
         });
         return response;
     },
@@ -40,7 +40,7 @@ App.EventLog = Backbone.Model.extend({
         var events, entry, rv = 0;
         events = this.get('entries');
         return events.filter(function(item) {
-        	var rv = item.get('ev') == event;
+        	var rv = (item.ev || item.get('ev')) == event;
         	if(rv && filter){
         		rv = filter(item);
         	}
@@ -100,6 +100,14 @@ App.EventLog = Backbone.Model.extend({
     },
     zeroconfDuration : function() {
         return this.duration('zeroconf');
+    },
+    description: function(){
+    	var rv=[], name = this.get('name');
+    	if(name){
+    		rv.push(name);
+    	}
+    	rv.push(this.get('uid'));
+    	return rv.join('\n');
     }
     /*    uid: DS.attr('string'),
      date: DS.attr('date'),
@@ -115,13 +123,24 @@ App.EventLog = Backbone.Model.extend({
      events: DS.hasMany('App.Event'),*/
 });
 
-App.EventLogCollection = Backbone.Collection.extend({
+App.EventLogCollection = Backbone.PageableCollection.extend({
     model : App.EventLog,
     url : '/logs/event_logs',
-    parse : function(response) {
+    mode: "infinite",
+    state: {
+    	firstPage: 1,
+        pageSize: 15,
+        sortKey: "date",
+        order: 1
+    },
+    queryParams:{
+    	currentPage: null
+    },
+    /*parse : function(response) {
         'use strict';
         if('meta' in response){
             this.meta = response.meta;
+            delete response.meta;
         }
         if('event_logs' in response){
             response = response.event_logs;
@@ -131,45 +150,40 @@ App.EventLogCollection = Backbone.Collection.extend({
     comparator : function(item) {
         'use strict';
         return item.get('date');
-    },
-    /**
-     *  calculates the average time taken for each of the given discovery method
-     * @param {string} event The name of the event type ("start", "upnp", "zeroconf", "cloud")
-     */
-    duration : function(event, filter) {
-        'use strict';
-        var avg, times = [];
-        if(filter===undefined){
-        	filter = function(){return true;};
-        }
-        this.filter(filter).forEach(function(item) {
-            var t = item.durations(event);
-            times.push.apply(times, t);
-        });
-        if (times.length > 0) {
-            avg = 0;
-            times.forEach(function(t) {
-                avg += t;
-            });
-            avg = Math.round(avg / times.length) / 1000.0;
-            return avg
-        }
-        return 'N/A';
-    },
-    count : function(event,filter) {'use strict';
-        'use strict';
-        var rv = 0;
-        if(filter===undefined){
-        	filter = function(){return true;};
-        }
-        this.filter(filter).forEach(function(item) {
-            rv += item.count(event);
-        });
-        return rv;
-    }
+    },*/
 });
 App.eventLogs = new App.EventLogCollection();
 
+App.EventsFilterModel = Backbone.Model.extend({
+	defaults:{
+		date: null,
+		uid: null
+	},
+	setDateFilter: function(date){
+		'use strict';
+		if(typeof(date)=='string'){
+			date = moment(date);
+		}
+		this.set({date:date});
+		//App.eventLogs.trigger('filter');
+	},
+	clearDateFilter: function(){
+		this.set({date:null});
+		//App.eventLogs.trigger('filter');	  
+	},
+	setUidFilter: function(uid){
+		'use strict';
+		this.set({uid:uid});
+		//this.updateUrl();
+		//App.eventLogs.trigger('filter');
+	},
+	clearUidFilter: function(){
+		this.set({uid:null});
+		//this.updateUrl();
+		//App.eventLogs.trigger('filter');	  
+	}
+});
+App.eventsFilter = new App.EventsFilterModel();
 /*
  window.App = Ember.Application.create({
  LOG_TRANSITIONS: true,

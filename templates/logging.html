@@ -1,174 +1,160 @@
 {% extends 'layout.html' %}
 {% block extraheaders %}
-<style type="text/css">
-a.balloon {
-    text-decoration: none;
-}
-.balloon .popup {
-    display: none;
-    border-collapse: collapse;
-    position: absolute;
-    margin-top: -0.5em;
-    width: 26em;
-    background-color: white;
-    border: 1px solid #333;
-    box-shadow: 2px 2px 0 0 #555;
-}
-.balloon:hover .popup {
-    display: block;
-}
-.prev {
-    float: left;
-}
-.next {
-    float: right;
-}
-#map-canvas {
-    margin-top: 1em;
-    height: 22em;
-    width: 40em;
-}
-.eventlog {
-    margin-bottom: 1em;
-    width: 15em;
-}
-.eventlog td {
-    width: 50%;
-}
-.leftcol {
-    width: 60%;
-    float: left;
-    font-size: 0.9em;
-}
-.rightcol {
-    width: 40%;
-    float: left;
-    font-size: 0.9em;
-}
-a.back {
-    float: right;
-    color: blue;
-    text-decoration: underline;
-    font-size: 0.9em;
-}
-#detail > h2 {
-    margin-bottom: 1em;
-}
-.logtotals{
-    background-color: #CCCCCC;
-    font-weight: bold;
-}
-.logtotals .total {
-    text-align: right;
-}
-</style>
+<link rel="stylesheet" media="all" type="text/css" href="/css/backgrid.css" />
+<link rel="stylesheet" media="all" type="text/css" href="/css/backgrid-paginator.css" />
+<link rel="stylesheet" media="all" type="text/css" href="/css/logging.css" />
 {% endblock %}
 
 {% block content %}
-<nav id="datesel">
-    <ul></ul>
-</nav>
-  <div id="logging" class="loading">
-      <h2 class="loading">Loading logging data...</h2>
-<table id="summary" class="table table-striped table-bordered table-condensed">
-<thead>
-<tr>
-<th class="devicetype" rowspan="2">Type</th>
-<th class="uid clickable" rowspan="2">UID</th>
-<th class="location" rowspan="2">Location</th>
-<th class="date clickable" rowspan="2">Date</th><th colspan="4">Number of samples</th>
-<th colspan="3">Average duration</th></tr>
-<tr class="odd">
-<th>Total</th>
-<th><img src="/img/globe.png" alt="Cloud" title="Cloud" /></th>
-<th><img src="/img/bonjour.png" alt="ZeroConf" title="ZeroConf" /></th>
-<th><img src="/img/upnp.png" alt="UPnP" title="UPnP" /></th>
-<th><img src="/img/globe.png" alt="Cloud" title="Cloud" /></th>
-<th><img src="/img/bonjour.png" alt="ZeroConf" title="ZeroConf" /></th>
-<th><img src="/img/upnp.png" alt="UPnP" title="UPnP" /></th></tr></thead>
-<tbody>
-</tbody>
-<tfoot>
-</tfoot>
-</table>
-  </div>
+<div class="grid_4">
+    <div id="summary" class="form"></div>
+</div>
+<div class="grid_11 form" id="logging">
+    <article class="loading" id="EventsListView">
+        <h2 class="loadingmsg">Loading logging data...</h2>
+        <div class="pagination">
+            <span class="prev clickable">Previous page</span><span class="next clickable">Next page</span>
+        </div>
+        <table id="events" class="table table-striped table-bordered table-condensed">
+            <thead>
+                <tr>
+                    <th class="devicetype clickable" rowspan="2" colspan="2">Device</th>
+                    <th class="date clickable" rowspan="2">Date</th><th colspan="4">Number of samples</th>
+                    <th colspan="3">Average duration</th>
+                </tr>
+                <tr class="odd">
+                    <th>Total</th>
+                    <th><img src="/img/globe.png" alt="Cloud" title="Cloud" /></th>
+                    <th><img src="/img/bonjour.png" alt="ZeroConf" title="ZeroConf" /></th>
+                    <th><img src="/img/upnp.png" alt="UPnP" title="UPnP" /></th>
+                    <th><img src="/img/globe.png" alt="Cloud" title="Cloud" /></th>
+                    <th><img src="/img/bonjour.png" alt="ZeroConf" title="ZeroConf" /></th>
+                    <th><img src="/img/upnp.png" alt="UPnP" title="UPnP" /></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+            <tfoot></tfoot>
+        </table>
+    </article>
+</div>
+<div class="clear"></div>
 {% endblock %}
 
 {% block scripts %}
 {% raw %}
-<script type="text/template" id="event-row">
-        <td data-title="'Name'" sortable="name" class="devicetype <%= client?'client':'device' %>">
-            <% if(client){ %>
-            <img src="/img/smart_phone_simple.png" alt="client" title="Client results" />
-            <% } else { %>
-            <img src="/img/radio_silhouette.png" alt="device" title="Device results" />
-            <% } %>
-        </td>
-        <td class="uid clickable" data-title="'UID'" ><p><%-uid%></p></td>
-        <td class="location" data-title="'Location'"><%-city%> (<%-addr%>)</td>
-        <td class="date clickable" data-title="'Date'" sortable="date"><%= date.format("DD MMMM YYYY") %></td>
-        <td class="count"><%=totalCount%></td>
-        <td class="count <%= (cloudCount<totalCount)?'failures':'' %>"><%-cloudCount%></td>
-        <td class="count <%= (zeroconfCount<totalCount)?'failures':'' %>"><%-zeroconfCount%></td>
-        <td class="count <%= (upnpCount<totalCount)?'failures':'' %>"><%-upnpCount%></td>
-        <td class="time"><%-model.cloudDuration()%></td>
-        <td class="time"><%-model.zeroconfDuration()%></td>
-        <td class="time"><%-model.upnpDuration()%></td>
+<script type="text/template" id="event-row-template">
+    <td class="clickable devicetype <%= client?'client':'device' %>">
+    <% if(client){ %>
+    <img src="/img/smart_phone_simple.png" alt="client" title="Client results" />
+    <% } else { %>
+    <img src="/img/radio_silhouette.png" alt="device" title="Device results" />
+    <% } %>
+    </td>
+    <td class="description clickable">
+    <% if(name){ %> <p class="name"><%-name %></p><%}%>
+    <% if(!name){ %> <p class="uid"><%-uid%></p><%}%>
+    <p class="location"><%-city%> (<%-addr%>)</p></td>
+    <td class="date clickable" data-title="'Date'" sortable="date"><%= date.format("DD MMMM YYYY") %></td>
+    <td class="count clickable"><%=totalCount%></td>
+    <td class="count clickable <%= (cloudCount<totalCount)?'failures':'' %>"><%=cloudCount%></td>
+    <td class="count clickable <%= (zeroconfCount<totalCount)?'failures':'' %>"><%=zeroconfCount%></td>
+    <td class="count clickable <%= (upnpCount<totalCount)?'failures':'' %>"><%=upnpCount%></td>
+    <td class="time"><%=model.cloudDuration()%></td>
+    <td class="time"><%=model.zeroconfDuration()%></td>
+    <td class="time"><%=model.upnpDuration()%></td>
 </script>
 
-<script type="text/template" id="event-foot">
-    <tr class="logtotals">
-        <td colspan="4" class="total">Total</td>
-        <td class="count"><%= totalCount %></td>
-        <td class="count <%= (cloudCount<totalCount)?'failures':'' %>"><%= cloudCount %></td>
-        <td class="count <%= (zeroconfCount<totalCount)?'failures':'' %>"><%= zeroconfCount %></td>
-        <td class="count <%= (upnpCount<totalCount)?'failures':'' %>"><%= upnpCount %></td>
-        <td class="time"><%- cloudDuration %></td>
-        <td class="time"><%- zeroconfDuration %></td>
-        <td class="time"><%- upnpDuration %></td>
-    </tr>
+<script type="text/template" id="event-foot-template">
+    <td colspan="3" class="total">Total</td>
+    <td class="count"><%= totalCount %></td>
+    <td class="count <%= (cloudCount<totalCount)?'failures':'' %>"><%= cloudCount %></td>
+    <td class="count <%= (zeroconfCount<totalCount)?'failures':'' %>"><%= zeroconfCount %></td>
+    <td class="count <%= (upnpCount<totalCount)?'failures':'' %>"><%= upnpCount %></td>
+    <td class="time"><%- cloudDuration %></td>
+    <td class="time"><%- zeroconfDuration %></td>
+    <td class="time"><%- upnpDuration %></td>
 </script>
 
-<script type="text/template" id="event-detail">
+<script type="text/template" id="event-detail-template">
     <span class="back link">Back to summary</span>
-    <table>
-        <tr><td>Date</td><td>{{date}}</td></tr>
-{{#if name }}<tr><td>Friendly name</td><td>{{name}}</td></tr>{{/if}}
-<tr><td>UID</td><td class="uid clickable">{{uid}}</td></tr>
-<tr><td>Public IP address</td><td class="ipaddress">{{addr}}</td></tr>
-<tr><td>Location</td><td class="location">{{city}}</td></tr>
-<tr><td>Lat,long</td><td class="location">{{loc.lat}}, {{loc.lon}}</td></tr>
-{{#if extra }}
-{{#if extra.dhcp }}
-{{#key_value extra.dhcp}}
-<tr><td>DHCP {{key}}</td><td class="extra">{{value}}</td></tr>
-{{/key_value}}
-{{/if}}
-{{#if extra.wifi }}
-{{#key_value extra.wifi}}
-<tr><td>WiFi {{key}}</td><td class="extra">{{value}}</td></tr>
-{{/key_value}}
-{{/if}}
-{{/if}}
-</table>
+    <table class="table table-striped table-bordered table-condensed grid_7 alpha">
+    <tr><td>Date</td><td><%-date.format("DD MMMM YYYY")%></td></tr>
+    <%if(name){%><tr><td>Friendly name</td><td><%-name%></td></tr><% } %>
+    <tr><td>UID</td><td class="uid clickable"><%-uid%></td></tr>
+    <tr><td>Public IP address</td><td class="ipaddress"><%-addr%></td></tr>
+    <tr><td>Location</td><td class="location"><%-city%></td></tr>
+    <tr><td>Lat,long</td><td class="location"><%-loc.lat%>, <%-loc.lon%></td></tr>
+    <% if(typeof(extra)=='object'){
+    for(var section in extra) {
+    for(var key in extra[section]){
+    %>
+    <tr><td><%- section %> <%-key%></td><td class="extra <%- section %>"><%-(typeof(extra[section][key])=='object')?JSON.stringify(extra[section][key]):extra[section][key]%></td></tr>
+    <% } } } %>
+    </table>
+    <div class="grid_7 ohmega">
+        <% _.each(entries,function(entry) { %>
+            <% if(entry.start){ %> <table class="eventlog table table-striped table-bordered table-condensed"> <% } %>
+            <tr><td><%- entry.ev %></td><td data-ts="<%- entry.ts.toISOString() %>"><%- ('diff' in entry)?((entry.diff>0)?('+'+entry.diff):entry.diff):entry.ts.format('h:mm:ss a') %></td></tr>
+            <% if(entry.end){ %> </table> <% } %>
+        <% }); %>
+    </div>
+    <div class="clear"></div>
+    <% if(mapAPI){ %> <div id="map-canvas"></div><% } %>
+</script>
+
+<script type="text/template" id="summary-panel-template">
+    <table class="table table-striped table-bordered table-condensed">
+    <caption>Summary</caption>
+    <thead><tr><td></td><th>Count</th><th>Duration</th></tr></thead>
+    <tbody>
+    <tr>
+    <td class="txtright">Total events</td>
+    <td class="count"><%= totalCount %></td>
+    <td class="time"><%- endDuration %></td>
+    </tr>
+    <tr>
+    <td class="txtright">Cloud</td>
+    <td class="count <%= (cloudCount<totalCount)?'failures':'' %>"><%= cloudCount %></td>
+    <td class="time"><%- cloudDuration %></td>
+    </tr>
+    <tr>
+    <td class="txtright">ZeroConf</td>
+    <td class="count <%= (zeroconfCount<totalCount)?'failures':'' %>"><%= zeroconfCount %></td>
+    <td class="time"><%- zeroconfDuration %></td>
+    </tr>
+    <tr>
+    <td class="txtright">UPnP</td>
+    <td class="count <%= (upnpCount<totalCount)?'failures':'' %>"><%= upnpCount %></td>
+    <td class="time"><%- upnpDuration %></td>
+    </tr>
+    </tbody>
+    </table>
+
 </script>
 
 {% endraw %}
-  <script type="text/javascript" src="/js/dev/jquery-1.10.2.js"></script>
-  <script type="text/javascript" src="/js/dev/underscore.js"></script>
-  <script type="text/javascript" src="/js/dev/backbone.js"></script>
-  <script type="text/javascript" src="/js/dev/moment.js"></script>
-  <script type="text/javascript" src="/js/models.js"></script>
-  <script type="text/javascript" src="/js/views.js"></script>
-  <script type="text/javascript" src="/js/routes.js"></script>
+<script type="text/javascript" src="/js/dev/jquery-1.10.2.js"></script>
+<script type="text/javascript" src="/js/dev/underscore.js"></script>
+<script type="text/javascript" src="/js/dev/backbone.js"></script>
+<script type="text/javascript" src="/js/dev/backbone-pageable.js"></script>
+<script type="text/javascript" src="/js/dev/backgrid.js"></script>
+<script type="text/javascript" src="/js/dev/backgrid-paginator.js"></script>
+<script type="text/javascript" src="/js/dev/moment.js"></script>
+<script type="text/javascript" src="/js/models.js"></script>
+<script type="text/javascript" src="/js/views.js"></script>
+<script type="text/javascript" src="/js/routes.js"></script>
 <script type="text/javascript">
-{% if not on_production_server %}
-{% endif %}
-  $(document).ready(function() {
-    App.appView = new App.AppView();
-    App.dateSelectView = new App.DateSelectView();
-  });
+    {% if not on_production_server %}
+    {% endif %}
+    App.appRouter = new App.Router();
+    Backbone.history.start();
+    $(document).ready(function() {
+        App.eventLogs.getFirstPage({
+            reset : true
+        }).done(function() {
+            $('#logging .loading').removeClass('loading');
+            App.appRouter.eventsListView.refresh();
+        });
+    });
 </script>
-<script type="text/javascript" src="/js/jquery-1.9.1.min.js"></script>
-<script type="text/javascript" src="/js/logging.js"></script>
 {% endblock %}

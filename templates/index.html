@@ -7,7 +7,7 @@
 	  {% if is_current_user_admin %}
 		<p class="button" ><a href="{{uri_for('registered')}}">{{routes['registered'].title}}</a></p>
         <p class="button" ><a href="{{uri_for('logging')}}">{{routes['logging'].title}}</a></p>
-		<p class="button" ><a href="{{uri_for('register',reg_type='api')}}">{{routes['register'].title}}</a></p>
+		<p class="button" ><a href="{{uri_for('register',reg_type='api')}}">Register an API</a></p>
 		<p class="button" ><a href="{{uri_for('add-service')}}">{{routes['add-service'].title}}</a></p>
 		<p class="button" ><a href="{{uri_for('upload-services')}}">{{routes['upload-services'].title}}</a></p>
 		{% if not on_production_server %}

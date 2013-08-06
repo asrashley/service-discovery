@@ -1,76 +1,91 @@
 App.Router = Backbone.Router.extend({
   routes: {
     "q/:query": "viewFilteredList",
-    ":id": "ViewLog",
-    "/":"viewSummary"
+    "uid/:id": "ViewLog",
+    "":"viewSummary"
     // ... other routes
   },
-  _generateUrl : function(){
+  initialize: function(options){
+	  this.listenTo(App.eventsFilter,'add remove change', this.updateUrl);
+	  this.eventsListView = new App.EventsListView({
+		  collection : App.eventLogs
+	  });
+	  this.logTotalsView = new App.LogTotalsView({
+		  collection : App.eventLogs.fullCollection,
+		  template:'#summary-panel-template',
+		  el:'#summary'
+	  });
+  },
+  updateUrl : function(){
 	  'use strict';
 	  var q = [];
-	  if(App.selectedDate){
-		  q.push('date='+App.selectedDate.format('YYYY-MM-DD'));
+	  var selectedDate = App.eventsFilter.get('date');
+	  var selectedUid = App.eventsFilter.get('uid');
+	  if(selectedDate){
+		  q.push('date='+selectedDate.format('YYYY-MM-DD'));
 	  }
-	  if(App.selectedUid){
-		  q.push('uid='+App.selectedUid);
+	  if(selectedUid){
+		  q.push('uid='+selectedUid);
 	  }
-	  return 'q/'+q.join('&');
-  },
-  setDateFilter: function(date){
-	  'use strict';
-	  if(typeof(date)=='string'){
-		  date = moment(date);
+	  if(App.eventLogs.state.currentPage){
+		  q.push('page='+App.eventLogs.state.currentPage);		  
 	  }
-	  App.selectedDate = date;
-	  this.navigate(this._generateUrl());
-	  App.eventLogs.trigger('filter');
-  },
-  clearDateFilter: function(){
-	  delete App.selectedDate;
-	  this.navigate(this._generateUrl());
-	  App.eventLogs.trigger('filter');	  
-  },
-  setUidFilter: function(uid){
-	  'use strict';
-	  App.selectedUid = uid;
-	  this.navigate(this._generateUrl());
-	  App.eventLogs.trigger('filter');
-  },
-  clearUidFilter: function(){
-	  delete App.selectedUid;
-	  this.navigate(this._generateUrl());
-	  App.eventLogs.trigger('filter');	  
+	  if(q.length){
+		  this.navigate('q/'+q.join('&'));
+	  }
+	  else{
+		  this.navigate('');
+	  }
   },
   viewFilteredList: function(query){
 	  'use strict';
 	  var items = query.split('&');
-	  delete App.selectedUid;
-	  delete App.selectedDate;
+	  var selectedDate = null, selectedUid=null; 
 	  items.forEach(function(item){
 		 var params = item.split('=');
 		 if(params.length==2){
 			 if(params[0]=='date'){
-				 App.selectedDate = moment(params[1]);		 
+				 selectedDate = moment(params[1]);		 
 			 }
 			 else if(params[0]=='uid'){
-				 App.selectedUid = params[1];		 
+				 selectedUid = params[1];		 
 			 }
 		 }
 	  });
-	  App.eventLogs.trigger('filter');
+	  App.eventsFilter.set({'date':selectedDate,'uid':selectedUid});
+	  //App.eventLogs.trigger('filter');
   },
-  viewLog: function(id) {
+  viewLog: function(model) {
 	  'use strict';
-    console.log("View single log opened.");
+	  var id;
+	  if(typeof(model)=='string'){
+		  id = model;
+		  model = App.eventLogs.fullCollection.get(id);
+	  }
+	  else{
+		  id = model.id;
+	  }
+	  this.navigate('uid/'+id);
+	  this.eventsListView.$el.hide();
+	  if(this.eventDetailView){
+		  this.eventDetailView.remove();
+	  }
+	  this.eventDetailView = new App.EventDetailView({model:model});
+	  $('#logging').append(this.eventDetailView.el);
+	  this.eventDetailView.render();
   },
   viewSummary: function(){
 	  'use strict';
-	  delete App.selectedDate;
-	  this.navigate('/');
-	  App.eventLogs.trigger('filter');
+	  if(this.eventDetailView){
+		  this.eventDetailView.remove();
+		  this.eventDetailView=null;
+	  }
+	  this.eventsListView.$el.show();
+	  App.eventsFilter.clearUidFilter();
+	  App.eventsFilter.clearDateFilter();
+	  this.updateUrl();
+	  //this.navigate('/');
+	  //App.eventLogs.trigger('filter');
   }
 });
 
-App.appRouter = new App.Router();
-
-Backbone.history.start();

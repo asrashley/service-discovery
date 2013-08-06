@@ -514,22 +514,31 @@ class RegistrationList(RequestHandler):
 class LoggingAPI(RequestHandler):
     """REST API to access logging data
     """
+    LINK_TEMPLATE=r'<{url}?cursor={cursor}>; rel="{rel}"'
+    
     def get(self, uid=None, date=None, id=None):
         if not users.is_current_user_admin():
             context['error']='Only a site administrator can use this service'
             template = templates.get_template('error.html')
         #context = {'handler':self}
-        curs = Cursor(urlsafe=self.request.get('cursor'))
-        #try:
-        #    context['latlong'] = self.request.headers['X-AppEngine-CityLatLong'].split(',')
-        #except KeyError:
-        #    pass
+        cursor = self.request.get('cursor')
+        if cursor and '%25' in cursor:
+            # double-escaped URL
+            cursor = urllib.unquote(cursor)
+            logging.info(cursor)
+        cursor = urllib.unquote(cursor)
+        curs = Cursor(urlsafe=cursor)
         if id is not None:
             key = ndb.Key(urlsafe=id)
             logs = [key.get()]
-            #context['id']=id
         else:
             query = EventLog.query()
+            try:
+                per_page = int(self.request.get('per_page'))
+            except ValueError:
+                per_page=20
+            if per_page>50:
+                per_page=50
             if uid is not None:
                 query = query.filter(EventLog.uid==uid)
                 #context["title_link"]=self.uri_for('logging')
@@ -540,7 +549,13 @@ class LoggingAPI(RequestHandler):
                 #context["title_link"]=self.uri_for('logging')
                 #context["date"] = date
                 query = query.filter(EventLog.date==date)
-            logs, next_curs, next = query.order(EventLog.date).fetch_page(20, start_cursor=curs)
+            forward_order = EventLog.date
+            backward_order = -EventLog.date
+            if self.request.get('sort_by')=='uid':
+                order_by = EventLog.uid
+            if self.request.get('order')=='desc':
+                forward_order,backward_order = (backward_order,forward_order)
+            logs, next_curs, next = query.order(forward_order).fetch_page(per_page, start_cursor=curs)
             #context["logs"] = logs
             #if uid and logs:
             #    context['info']={}
@@ -559,11 +574,10 @@ class LoggingAPI(RequestHandler):
         prev_curs=prev=None
         if self.request.get('cursor'):
             rev_curs = curs.reversed()
-            logs2, prev_curs, prev = query.order(-EventLog.date).fetch_page(20, start_cursor=rev_curs)
+            logs2, prev_curs, prev = query.order(backward_order).fetch_page(per_page, start_cursor=rev_curs)
         flogs = []
         fentries = []
-        sideload=False
-        #TODO: add a header to detect Emberjs, which needs the events to be side-loaded
+        sideload=self.request.get('sideload',False)
         for log in logs:
             fl = flatten(log)
             fl['id'] = log.key.urlsafe()
@@ -584,11 +598,13 @@ class LoggingAPI(RequestHandler):
             else:
                 js = flogs[0]
         else:
-            js = { 'event_logs':flogs, 'meta':{} }
-            if next_curs and next:
-                js["meta"]["next"] = next_curs.urlsafe() 
-            if prev_curs and prev:
-                js["meta"]["prev"] = prev_curs.urlsafe()
+            js = { 'event_logs':flogs } if sideload else flogs
+            links = [self.LINK_TEMPLATE.format(url=self.request.path_url, cursor='',rel="first")]
+            if next and next_curs:
+                links.append(self.LINK_TEMPLATE.format(url=self.request.path_url, cursor=urllib.quote(next_curs.urlsafe()),rel="next"))
+            if prev and prev_curs:
+                links.append(self.LINK_TEMPLATE.format(url=self.request.path_url, cursor=urllib.quote(prev_curs.urlsafe()),rel="prev"))
+            self.response.headers.add('Link', ', '.join(links))                
             if sideload:
                 js['events'] = fentries
         self.response.content_type='application/json'

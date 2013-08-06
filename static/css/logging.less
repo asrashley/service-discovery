@@ -1,0 +1,151 @@
+@import "prefixer";
+@import "helpers";
+
+/*import "backgrid.css";*/
+
+a.balloon {
+    text-decoration: none;
+}
+.balloon .popup {
+    display: none;
+    border-collapse: collapse;
+    position: absolute;
+    margin-top: -0.5em;
+    width: 26em;
+    background-color: white;
+    border: 1px solid #333;
+    box-shadow: 2px 2px 0 0 #555;
+}
+.balloon:hover .popup {
+    display: block;
+}
+.prev {
+    float: left;
+}
+#map-canvas {
+    margin-top: 1em;
+    height: 22em;
+    width: 40em;
+}
+.eventlog {
+    margin-bottom: 1em;
+    width: 15em;
+}
+.eventlog td {
+    width: 50%;
+}
+.leftcol {
+    width: 60%;
+    float: left;
+    font-size: 0.9em;
+}
+.rightcol {
+    width: 40%;
+    float: left;
+    font-size: 0.9em;
+}
+
+#logging .loadingmsg {
+  display: none;
+}
+
+#logging.loading .loadingmsg {
+  display: block;
+  font-size: 2em;
+  text-align: center;
+}
+
+.loading .pagination, .loading #events {
+  display: none;
+}
+.txtright {
+  text-align: right;
+}
+.pagination {
+  width: 90%;
+  height: 1.2em;
+  position: relative;
+}
+.back, .next, .prev {
+    /*float: right;*/
+   position: absolute;
+   top: 0;
+   right: 0;
+    color: blue;
+    text-decoration: underline;
+    font-size: 0.9em;
+}
+.prev {
+  /*float: left; */
+ left:0;
+ right: auto;
+}
+#detail > h2 {
+    margin-bottom: 1em;
+}
+.logtotals{
+    background-color: #CCCCCC;
+    font-weight: bold;
+}
+.logtotals .total {
+    text-align: right;
+}
+
+#logging{
+   /* width: 45em;
+    display: inline-block;*/
+    .uid {
+      max-width: 18em;
+      font-size: 0.7em;
+      font-size: 0.7rem;
+    }
+    .name {
+      font-weight: bold;
+      font-size: 1.05em;
+    }
+    .devicetype {
+      border-right: none;
+    }
+    .devicetype > img {
+        width: 3em;
+        vertical-align: middle;
+    }
+    .description {
+      border-left: none;
+      font-size: 0.85em;
+      font-size: 0.85rem;
+    }
+
+}
+#logging {
+  font-size: 14px;
+  font-size: 1rem;
+}
+#summary{
+  padding: 0.5em;
+  /*display: inline-block;
+  width: 12em;*/
+  /*height:20em;*/
+ .table {
+   font-size: (0.9*14px);
+   font-size: 0.9rem;
+ }
+ .button {
+   font-size: inherit;
+ }
+  vertical-align: top;
+  >ul {
+    margin:0;
+    -webkit-padding-start: 0;
+  }
+  >ul>li {
+    /*line-height: 1.25em;
+    height: 1.25em;*/
+    border: 1px solid #333;
+    margin: 0.5em 0;
+    padding: 0.25em;
+    width: 100%;
+    text-align: center;
+    left: 0;
+  }
+}
