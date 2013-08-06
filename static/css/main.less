@@ -6,9 +6,9 @@
 @mediumGrey: #ddd;
 
 body {
-  font-family: "Lucida Grande", Helvetica, Arial, sans-serif;
-  margin: 0;
-	padding: 1em;
+    font-family: "Lucida Grande", Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 1em;
 	.gradientH3(black, #335363, 50, black);
 }
 
@@ -36,11 +36,11 @@ header {
         height: 100%;
         width: 50%;
 	}
-	.nav {
+	nav.breadcrumbs {
 	   position: absolute;
 	   bottom: 0.2em;
 	}
-	.breadcrumbs {
+	.breadcrumb {
 		/*position: relative;
 		top: -1em;*/
 		color: white;
@@ -66,7 +66,7 @@ a {
 }
 
 #content {
-	padding: 0.5em 1em;
+	padding: 0;
 	h1 {
 	  color: #ddd;
 	  font-size: 2em;
@@ -74,7 +74,6 @@ a {
 }
 
 .button {
-  @width: 16em;
   margin: 1em 0;
   user-select: none;
   display: block;
@@ -89,6 +88,10 @@ a {
   padding: 3px 10px 5px 10px;
   text-align: center;
 	font-size: 1.5em;
+}
+
+#buttons .button {
+  @width: 16em;
 	width:@width;
 	position: relative;
 	left: 50%;
@@ -129,7 +132,6 @@ a {
 	border-radius:0.75em;
 	background-color: @lightGrey;
 	overflow-x:hidden;
-  width: 35em;
   label {
     width: 8em;
     display: inline-block;
@@ -157,25 +159,36 @@ a {
     -webkit-margin-before: 0;
     -webkit-margin-after: 0;
   }
+    .time, .count {
+       text-align: center;
+    }
 }
 .error {
   color: red;
   font-weight: bold;
 }
+
+.table {
+    border-collapse: collapse;
+    th, caption {
+        background: #333;
+        color: white;
+        vertical-align: middle;
+        text-align: center;
+        font-weight: bold;
+        border: 1px solid black;
+    }
+    .failures {
+        color: red;
+    }
+    td {
+        padding: 0 0.5em;
+        border: 1px solid black;
+    }
+}
+
 #pairingdatabase, #logging {
   .form;
-  width: 90%;
-  table {
-    border-collapse: collapse;
-  }
-	td {
-		padding: 0 0.5em;
-		border: 1px solid black;
-	}
-	th {
-	  font-weight: bold;
-    border: 1px solid black;
-	}
 	.odd {
 	  background-color: darken(@lightGrey,10%);
 	}
@@ -189,74 +202,10 @@ a {
   	background-color: red;
 	  font-weight: bold;
 	}
-	.time, .count {
-	   text-align: center;
-	}
 }
 
-#logging {
-    width: 56em;
-    display: inline-block;
-    th {
-        background: #333;
-        color: white;
-        vertical-align: middle;
-        text-align: center;
-    }
-    .failures {
-        color: red;
-    }
-    .devicetype > img {
-        width: 3em;
-    }
-    .uid {
-      font-size: 0.8em;
-      font-size: 0.8rem;
-      >p{
-        width: 12em;
-      }
-    }
-}
-#datesel {
-  .form;
-  display: inline-block;
-  width: 12em;
-  /*height:20em;*/
-  vertical-align: top;
-  >ul {
-    margin:0;
-  }
-  >ul>li {
-    line-height: 1.25em;
-    height: 1.25em;
-    border: 1px solid #333;
-    margin: 0.2em 0;
-    padding: 0.25em;
-    width: 100%;
-    text-align: center;
-    left: 0;
-  }
-}
-
-#datesel {
-  .form;
-  display: inline-block;
-  width: 12em;
-  /*height:20em;*/
-  vertical-align: top;
-  >ul {
-    margin:0;
-  }
-  >ul>li {
-    line-height: 1.25em;
-    height: 1.25em;
-    border: 1px solid #333;
-    margin: 0.2em 0;
-    padding: 0.25em;
-    width: 100%;
-    text-align: center;
-    left: 0;
-  }
+#pairingdatabase{
+  width: 90%;
 }
 
 #apiregistration {
