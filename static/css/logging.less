@@ -19,13 +19,11 @@ a.balloon {
 .balloon:hover .popup {
     display: block;
 }
-.prev {
-    float: left;
-}
-#map-canvas {
+.mapcanvas {
     margin-top: 1em;
-    height: 22em;
-    width: 40em;
+    height: 18em;
+    width: 35em;
+    border: 0.2em solid #333;
 }
 .eventlog {
     margin-bottom: 1em;
@@ -45,11 +43,11 @@ a.balloon {
     font-size: 0.9em;
 }
 
-#logging .loadingmsg {
+.loadingmsg {
   display: none;
 }
 
-#logging.loading .loadingmsg {
+.loading .loadingmsg {
   display: block;
   font-size: 2em;
   text-align: center;
@@ -62,7 +60,7 @@ a.balloon {
   text-align: right;
 }
 .pagination {
-  width: 90%;
+  width: 100%;
   height: 1.2em;
   position: relative;
 }
@@ -80,12 +78,9 @@ a.balloon {
  left:0;
  right: auto;
 }
-#detail > h2 {
-    margin-bottom: 1em;
-}
-.logtotals{
-    background-color: #CCCCCC;
-    font-weight: bold;
+.eventdetail .back {
+  top: 1em;
+  right: 3em;
 }
 .logtotals .total {
     text-align: right;

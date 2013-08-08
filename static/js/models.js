@@ -159,61 +159,39 @@ App.EventsFilterModel = Backbone.Model.extend({
 		date: null,
 		uid: null
 	},
-	setDateFilter: function(date){
+	setDate: function(date){
 		'use strict';
 		if(typeof(date)=='string'){
 			date = moment(date);
 		}
-		this.set({date:date});
+		this.set({date:date, uid:null});
 		//App.eventLogs.trigger('filter');
 	},
-	clearDateFilter: function(){
-		this.set({date:null});
-		//App.eventLogs.trigger('filter');	  
-	},
-	setUidFilter: function(uid){
+	setUid: function(uid){
 		'use strict';
-		this.set({uid:uid});
+		this.set({uid:uid, date:null});
 		//this.updateUrl();
 		//App.eventLogs.trigger('filter');
 	},
-	clearUidFilter: function(){
-		this.set({uid:null});
+	clear: function(){
+		this.set({uid:null, date:null});
 		//this.updateUrl();
 		//App.eventLogs.trigger('filter');	  
-	}
+	},
+	isEmpty: function(){
+		return this.attributes.date===null && this.attributes.uid===null;
+	},
+	itemFilter: function(model){
+		if(this.attributes.uid!==null){
+			return model.attributes.uid==this.attributes.uid;
+		}
+		if(this.attributes.date!==null){
+			return model.attributes.date.year()==this.attributes.date.year() &&
+				model.attributes.date.month()==this.attributes.date.month() &&
+				model.attributes.date.day()==this.attributes.date.day();
+		}
+		return true;
+    },
+	
 });
 App.eventsFilter = new App.EventsFilterModel();
-/*
- window.App = Ember.Application.create({
- LOG_TRANSITIONS: true,
- LOG_VIEW_LOOKUPS: true,
- LOG_ACTIVE_GENERATION: true
- });
- App.Store = DS.Store.extend({
- revision: 13,
- adapter:'DS.RESTAdapter'
- });
-
- DS.RESTAdapter.registerTransform('geoPt', {
- serialize: function(value) {
- return {lat:value.get('lat'), lon:value.get('lon')};
- },
- deserialize: function(value) {
- return Ember.create({ lat: value.lat, lon: value.lon });
- }
- });
-
- DS.RESTAdapter.registerTransform('jsonProperty', {
- serialize: function(value) {
- return JSON.stringify(value);
- },
- deserialize: function(value) {
- if(value instanceof String){
- value = JSON.parse(value)
- }
- return value;
- }
- });
-
- */

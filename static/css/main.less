@@ -2,8 +2,11 @@
 @import "prefixer";
 
 @blue: #43a1f7;
+@darkGrey: #777;
 @lightGrey: #eee;
 @mediumGrey: #ddd;
+@tableHeadingBack: #999;
+
 
 body {
     font-family: "Lucida Grande", Helvetica, Arial, sans-serif;
@@ -170,21 +173,105 @@ a {
 
 .table {
     border-collapse: collapse;
-    th, caption {
-        background: #333;
+    th, caption, thead>tr>td {
+        background: @tableHeadingBack;
         color: white;
         vertical-align: middle;
         text-align: center;
         font-weight: bold;
-        border: 1px solid black;
+        /*border: 1px solid black; */
     }
     .failures {
         color: red;
     }
     td {
         padding: 0 0.5em;
-        border: 1px solid black;
+        /*border: 1px solid black; */
     }
+    .totals{
+        background-color: @tableHeadingBack;
+        font-weight: bold;
+        }
+}
+
+.table thead > tr > th,
+.table tbody > tr > th,
+.table tfoot > tr > th,
+.table thead > tr > td,
+.table tbody > tr > td,
+.table tfoot > tr > td {
+  padding: 8px;
+  line-height: 1.428571429;
+  vertical-align: top;
+  border-top: 1px solid #dddddd;
+}
+.table thead > tr > th {
+  vertical-align: bottom;
+}
+
+.table tbody + tbody {
+  border-top: 2px solid #dddddd;
+}
+.table .table {
+  background-color: #000000;
+}
+.table-condensed thead > tr > th,
+.table-condensed tbody > tr > th,
+.table-condensed tfoot > tr > th,
+.table-condensed thead > tr > td,
+.table-condensed tbody > tr > td,
+.table-condensed tfoot > tr > td {
+  padding: 5px;
+}
+
+.table-bordered {
+    border: 1px solid @darkGrey;
+    caption {
+        border-top: 1px solid @darkGrey;
+        border-left: 1px solid @darkGrey;
+        border-right: 1px solid @darkGrey;
+    }
+    > thead > tr:first-child > th, > thead > tr:first-child > td {
+        border-top: 1px solid @darkGrey;
+    }
+    > tbody tr:first-child > td {
+        border-top: 1px solid @darkGrey;
+    }
+    thead + tbody  {
+        tr > td {
+            border: 1px solid @mediumGrey;
+        }
+    }
+}
+
+.table-bordered {
+    > thead > tr, > tbody > tr, > tfoot > tr {
+        > th, >td {
+            border: 1px solid @mediumGrey;
+        }
+        > td:first-child, > th:first-child {
+            border-left: none;
+        }
+        > td:last-child, > th:last-child {
+            border-right: none;
+        }
+    }
+    > tbody > tr:last-child, > tfoot > tr:last-child {
+        > td {
+            border-bottom: none;
+        }
+    }
+}
+.table caption + thead tr:first-child th,
+.table colgroup + thead tr:first-child th,
+.table caption + thead tr:first-child td,
+.table colgroup + thead tr:first-child td {
+  border-top: 1px solid @mediumGrey;
+}
+
+.table-striped > tbody > tr:nth-child(odd) > td,
+.table-striped > tbody > tr:nth-child(odd) > th {
+  background-color: #f9f9f9;
 }
 
 #pairingdatabase, #logging {

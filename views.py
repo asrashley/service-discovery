@@ -204,6 +204,8 @@ class RegistrationHandler(RequestHandler):
     """register a device or an API"""
     @login_required
     def get(self,reg_type):
+        if not on_production_server:
+            logging.info('GET Registration request %s'%str(reg_type))
         context = self.create_context(reg_type=reg_type, new_user=False)
         user = users.get_current_user()
         #if not user:
@@ -242,6 +244,8 @@ class RegistrationHandler(RequestHandler):
         self.response.write(template.render(context))
                 
     def post(self,reg_type=None):
+        if not on_production_server:
+            logging.debug('POST Registration request %s'%str(reg_type))
         if reg_type=='api':
             user = users.get_current_user()
             if not user:
@@ -295,7 +299,7 @@ class RegistrationHandler(RequestHandler):
             if not srv:
                 srv = NetworkService.query(NetworkService.name==service_type).get()
             if not srv:
-                logging.info('Unable to find service '+service_type)
+                logging.debug('Unable to find service '+service_type)
                 raise ValueError
             sigcheck = hmac.new(self.password_hash(auth, uid),appid,hashlib.sha1)            
             sigcheck.update(':')
@@ -309,29 +313,22 @@ class RegistrationHandler(RequestHandler):
             for addr in addresses:
                 sigcheck.update(':')
                 sigcheck.update(addr)
+            sigcheck = sigcheck.hexdigest()
+            #logging.info('sig check %s %s'%(sigcheck,sig))
+            if sigcheck==sig:
+                status='ok'
+                if path and path[0]=='/':
+                    path = path[1:]
+                loc = ServiceLocation(id=uid,
+                                      parent=srv.key,
+                                      uid = uid,                      
+                                      public_address = self.request.remote_addr,
+                                      port = port,
+                                      path=path, 
+                                      internal_addresses = ', '.join(addresses))
+                loc.put()
         except (KeyError,ValueError),e:
             logging.info('registration error '+str(e))
-            pass
-        sigcheck = sigcheck.hexdigest()
-        if sigcheck==sig:
-            status='ok'
-            #try:
-            #    lat,lng = self.request.headers['X-AppEngine-CityLatLong']
-            #    location = ndb.GeoPt(float(lat),float(lng))
-            #except (KeyError, ValueError):
-            #    location = ndb.GeoPt(0,0)
-            if path and path[0]=='/':
-                path = path[1:]
-            loc = ServiceLocation(id=uid,
-                                  parent=srv.key,
-                                  uid = uid,                      
-                                  public_address = self.request.remote_addr,
-                                  port = port,
-                                  path=path, 
-                                  internal_addresses = ', '.join(addresses))
-            #country=self.request.headers['X-AppEngine-country'],
-            #location = location,
-            loc.put()
         self.response.content_type='application/json'
         self.response.write('{"status":"%s", "to":"%s", "address":"%s"}'%(status,uid,self.request.remote_addr))
 
@@ -611,8 +608,9 @@ class LoggingAPI(RequestHandler):
         self.response.write(json.dumps(js))
 
 class Logging(RequestHandler):
-    def get(self):
+    def get(self, **kwargs):
         context = self.create_context()
+        context['route'] = kwargs
         template = templates.get_template('logging.html')
         self.response.write(template.render(context))
 
