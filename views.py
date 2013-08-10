@@ -128,25 +128,40 @@ class RequestHandler(webapp2.RequestHandler):
             except (KeyError, TypeError, ValueError):
                 rv=None            
         return rv
-
+    
+    def authorise_device(self,api_authorisation):
+        new_user = False
+        user = users.get_current_user()
+        if not user:
+            return None
+        if not api_authorisation:
+            api_authorisation = ApiAuthorisation.query(ApiAuthorisation.user==user).get()
+        if not api_authorisation:
+            new_user=True
+            api_authorisation = ApiAuthorisation(
+                                                 apikey=uuid.uuid4().get_hex(),
+                                                 secret=security.generate_random_string(length=20, pool=security.ASCII_PRINTABLE),
+                                                 user=user,
+                                                 country=self.request.headers['X-AppEngine-country'],
+                                                 description=self.request.headers['User-Agent'])
+        api_authorisation.modified = datetime.datetime.now()
+        api_authorisation.put()
+        sc = securecookie.SecureCookieSerializer(cookie_secret)
+        cookie = sc.serialize(self.CLIENT_COOKIE_NAME, str(api_authorisation.apikey))
+        self.response.set_cookie(self.CLIENT_COOKIE_NAME, cookie, httponly=True)
+        return new_user
+        
 class MainPage(RequestHandler):
     def get(self, **kwargs):
         context = self.create_context(**kwargs) 
         context["headers"]=[]
         context['routes'] = routes
-        appid = ak = None
         ak = self.check_authorisation()
         if ak:
             context['authenticated']=True
-        #for k in self.request.headers.keys():
-        #    if k.lower()!='cookie':
-        #        context['headers'].append((k,self.request.headers[k]))
-        #if appid and ak:
-        #    context["services"]=[]
-        #    for ns in ServiceLocation.query(ServiceLocation.public_address==self.request.remote_addr,
-        #                                     ServiceLocation.country==self.request.headers['X-AppEngine-country']).iter():
-        #        for addr in ns.internal_addresses.split(','):
-        #            context["services"].append({'name':ns.name,'uid':ns.uid,'address':addr.strip(), 'port':ns.port})
+        elif users.is_current_user_admin():
+            self.authorise_device(ak) 
+            context['authenticated']=True
         template = templates.get_template('index.html')
         self.response.write(template.render(context))
 
@@ -515,6 +530,7 @@ class LoggingAPI(RequestHandler):
     
     def get(self, uid=None, date=None, id=None):
         if not users.is_current_user_admin():
+            context = self.create_context()
             context['error']='Only a site administrator can use this service'
             template = templates.get_template('error.html')
         #context = {'handler':self}
@@ -531,7 +547,7 @@ class LoggingAPI(RequestHandler):
         else:
             query = EventLog.query()
             try:
-                per_page = int(self.request.get('per_page'))
+                per_page = int(self.request.get('per_page',20))
             except ValueError:
                 per_page=20
             if per_page>50:
@@ -552,22 +568,7 @@ class LoggingAPI(RequestHandler):
                 order_by = EventLog.uid
             if self.request.get('order')=='desc':
                 forward_order,backward_order = (backward_order,forward_order)
-            logs, next_curs, next = query.order(forward_order).fetch_page(per_page, start_cursor=curs)
-            #context["logs"] = logs
-            #if uid and logs:
-            #    context['info']={}
-            #    for log in logs:
-            #        if log.loc.lat or log.loc.lon:
-            #            context['map'] = True
-            #            context['info']['location'] = log.loc
-            #        for f in ['addr','name','city','client']:
-            #            if getattr(log,f):
-            #                context['info'][f] = getattr(log,f) 
-            #        if log.extra:
-            #            try:
-            #                context['info']['extra'].update(log.extra)
-            #            except KeyError:
-            #                context['info']['extra']= dict(log.extra)                        
+            logs, next_curs, has_next = query.order(forward_order).fetch_page(per_page, start_cursor=curs)
         prev_curs=prev=None
         if self.request.get('cursor'):
             rev_curs = curs.reversed()
@@ -597,11 +598,12 @@ class LoggingAPI(RequestHandler):
         else:
             js = { 'event_logs':flogs } if sideload else flogs
             links = [self.LINK_TEMPLATE.format(url=self.request.path_url, cursor='',rel="first")]
-            if next and next_curs:
+            if has_next and next_curs:
                 links.append(self.LINK_TEMPLATE.format(url=self.request.path_url, cursor=urllib.quote(next_curs.urlsafe()),rel="next"))
             if prev and prev_curs:
                 links.append(self.LINK_TEMPLATE.format(url=self.request.path_url, cursor=urllib.quote(prev_curs.urlsafe()),rel="prev"))
             self.response.headers.add('Link', ', '.join(links))                
+            self.response.headers.add('X-Link', ', '.join(links))                
             if sideload:
                 js['events'] = fentries
         self.response.content_type='application/json'
@@ -738,6 +740,8 @@ class UploadLogs(Logging):
                     uid = event['uid']
                     start_time = from_isodatetime(event['date'])
                     log = self.outer.get_log_entry(uid, start_time)
+                    if event.has_key('events') and not event.has_key('entries'):
+                        event['entries'] = event['events']
                     for ev in event['entries']:
                         le = LogEntry(ts=from_isodatetime(ev['ts']), ev=ev['ev'])
                         log.entries.append(le)
@@ -746,7 +750,10 @@ class UploadLogs(Logging):
                     if event.has_key('loc') and event['loc'] is not None:
                         log.loc = ndb.GeoPt(lat=event['loc']['lat'], lon=event['loc']['lon'])
                     log.city = event['city']
-                    log.addr = event['addr']
+                    try:
+                        log.addr = event['addr']
+                    except KeyError:
+                        log.addr = event['publicAddress']
                     log.extra = event['extra']
                 values = self.outer.cache.values()
                 for log in values:
