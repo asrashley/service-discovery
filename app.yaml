@@ -51,10 +51,17 @@ skip_files:
 - ^(.*/)?#.*#
 - ^(.*/)?.*~
 - ^(.*/)?.*\.less
+- ^(.*/)?.*\.bat
 - ^(.*/)?.*\.py[co]
 - ^(.*/)?.*/RCS/.*
 - ^(.*/)?\..*
-- ^(console.py)
+- ^console.py
+- ^bulkloader-.*
+- ^backups
+- ^\.git.*
+- ^\.gaedata
+- ^.*\.txt
+- ^README.md
 
 pagespeed:
   enabled_rewriters:
