@@ -526,6 +526,7 @@ class RegistrationList(RequestHandler):
 class LoggingAPI(RequestHandler):
     """REST API to access logging data
     """
+    FIRST_LINK_TEMPLATE=r'<{url}>; rel="first"'
     LINK_TEMPLATE=r'<{url}?cursor={cursor}>; rel="{rel}"'
     
     def get(self, uid=None, date=None, id=None):
@@ -539,6 +540,8 @@ class LoggingAPI(RequestHandler):
             # double-escaped URL
             cursor = urllib.unquote(cursor)
             logging.info(cursor)
+        next_curs = prev_curs=None
+        prev=has_next=False
         cursor = urllib.unquote(cursor)
         curs = Cursor(urlsafe=cursor)
         if id is not None:
@@ -565,11 +568,11 @@ class LoggingAPI(RequestHandler):
             forward_order = EventLog.date
             backward_order = -EventLog.date
             if self.request.get('sort_by')=='uid':
-                order_by = EventLog.uid
+                forward_order = EventLog.uid
+                backward_order = -EventLog.uid
             if self.request.get('order')=='desc':
                 forward_order,backward_order = (backward_order,forward_order)
             logs, next_curs, has_next = query.order(forward_order).fetch_page(per_page, start_cursor=curs)
-        prev_curs=prev=None
         if self.request.get('cursor'):
             rev_curs = curs.reversed()
             logs2, prev_curs, prev = query.order(backward_order).fetch_page(per_page, start_cursor=rev_curs)
@@ -597,15 +600,16 @@ class LoggingAPI(RequestHandler):
                 js = flogs[0]
         else:
             js = { 'event_logs':flogs } if sideload else flogs
-            links = [self.LINK_TEMPLATE.format(url=self.request.path_url, cursor='',rel="first")]
-            if has_next and next_curs:
-                links.append(self.LINK_TEMPLATE.format(url=self.request.path_url, cursor=urllib.quote(next_curs.urlsafe()),rel="next"))
-            if prev and prev_curs:
-                links.append(self.LINK_TEMPLATE.format(url=self.request.path_url, cursor=urllib.quote(prev_curs.urlsafe()),rel="prev"))
-            self.response.headers.add('Link', ', '.join(links))                
-            self.response.headers.add('X-Link', ', '.join(links))                
             if sideload:
                 js['events'] = fentries
+        links = []
+        if prev and prev_curs:
+            links.append(self.LINK_TEMPLATE.format(url=self.request.path_url, cursor=urllib.quote(prev_curs.urlsafe()),rel="prev"))
+        else:
+            links.append(self.FIRST_LINK_TEMPLATE.format(url=self.request.path_url))
+        if has_next and next_curs:
+            links.append(self.LINK_TEMPLATE.format(url=self.request.path_url, cursor=urllib.quote(next_curs.urlsafe()),rel="next"))
+        self.response.headers.add('Link', ', '.join(links))                
         self.response.content_type='application/json'
         self.response.write(json.dumps(js))
 
