@@ -17,7 +17,7 @@ import mimerender
 
 from models import NetworkService, ApiAuthorisation, ServiceLocation, LogEntry, EventLog
 from serviceparser import parse_service_list, parse_contact_list
-from settings import cookie_secret, csrf_secret
+from settings import cookie_secret, csrf_secret, DEBUG
 from routes import routes
 from utils import on_production_server, flatten, from_isodatetime
 
@@ -30,6 +30,12 @@ templates = jinja2.Environment(
                                extensions=['jinja2.ext.autoescape'])
 
 NetworkServiceForm = model_form(NetworkService, exclude=('md','pt',))
+
+SCRIPT_TEMPLATE=r'<script src="/js/{mode}/{filename}{min}.js" type="text/javascript"></script>'
+def import_script(filename):
+    mode = 'dev' if DEBUG else 'prod'
+    min = '' if DEBUG else '.min'
+    return SCRIPT_TEMPLATE.format(mode=mode, filename=filename, min=min)
         
 class RequestHandler(webapp2.RequestHandler):
     CLIENT_COOKIE_NAME='discovery'
@@ -40,7 +46,8 @@ class RequestHandler(webapp2.RequestHandler):
         context = {
                    "title": kwargs.get('title', route.title),
                    "uri_for":self.uri_for,
-                   "on_production_server":on_production_server
+                   "on_production_server":on_production_server,
+                   "import_script":import_script
                    }
         #parent = app.router.match()
         #(route, args, kwargs)

@@ -1,5 +1,5 @@
 {% extends 'layout.html' %}
-{% block extraheaders %}
+{% block stylesheet %}
 <link rel="stylesheet" media="all" type="text/css" href="/css/logging.css" />
 {% endblock %}
 
@@ -47,7 +47,7 @@
     <% if(client){ %>
     <img src="/img/smart_phone_simple.png" alt="client" title="Client results" />
     <% } else { %>
-    <img src="/img/radio_silhouette.png" alt="device" title="Device results" />
+    <img src="/img/raspberry-pi.png" alt="device" title="Device results" />
     <% } %>
     </td>
     <td class="description clickable">
@@ -132,24 +132,27 @@
 </script>
 
 {% endraw %}
-<script type="text/javascript" src="/js/dev/jquery-1.10.2.js"></script>
-<script type="text/javascript" src="/js/dev/underscore.js"></script>
+{{ import_script("jquery-1.10.2") }}
+{{ import_script("underscore") }}
 <script type="text/javascript" src="/js/dev/backbone.js"></script>
-<script type="text/javascript" src="/js/dev/backbone-pageable.js"></script>
-<script type="text/javascript" src="/js/dev/moment.js"></script>
+<!-- import_script("backbone") -->
+{{ import_script("backbone-pageable") }}
+{{ import_script("moment") }}
 <script type="text/javascript" src="/js/models.js"></script>
 <script type="text/javascript" src="/js/views.js"></script>
 <script type="text/javascript" src="/js/routes.js"></script>
 <script type="text/javascript">
-    {% if not on_production_server %}
-    {% endif %}
-        App.eventLogs.getFirstPage({
+    App.eventLogs.getFirstPage({
             reset : true
-        }).done(function() {
-            App.appRouter.eventsListView.refresh();
-            {% if route.id %}App.appRouter.viewLog('{{route.id}}');{% endif %}
-            $('#logging .loading').removeClass('loading');
-        });
+    }).done(function() {
+        'use strict';
+        App.appRouter.eventsListView.refresh();
+        {% if route.id %}App.appRouter.viewLog('{{route.id}}');
+        {% else %}
+        {% if route.date %}App.appRouter.viewDate('{{route.date}}');{% endif %}
+        {% endif %}
+        $('#logging .loading').removeClass('loading');
+    });
     $(document).ready(function() {
         'use strict';
         var routeMatch, root="{{uri_for('logging')}}";
