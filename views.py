@@ -321,7 +321,7 @@ class RegistrationHandler(RequestHandler):
             if not srv:
                 srv = NetworkService.query(NetworkService.name==service_type).get()
             if not srv:
-                logging.debug('Unable to find service '+service_type)
+                #logging.debug('Unable to find service '+service_type)
                 raise ValueError
             sigcheck = hmac.new(self.password_hash(auth, uid),appid,hashlib.sha1)            
             sigcheck.update(':')
@@ -546,7 +546,6 @@ class LoggingAPI(RequestHandler):
         if cursor and '%25' in cursor:
             # double-escaped URL
             cursor = urllib.unquote(cursor)
-            logging.info(cursor)
         next_curs = prev_curs=None
         prev=has_next=False
         cursor = urllib.unquote(cursor)
@@ -657,7 +656,7 @@ class Logging(RequestHandler):
                                   self.request.headers['X-AppEngine-Region'],
                                   self.request.headers['X-AppEngine-Country']])
         except KeyError,e:
-            logging.debug(str(e))
+            #logging.debug(str(e))
             # These geo-ip headers don't exist on the dev server
             pass
         
@@ -698,10 +697,14 @@ class Logging(RequestHandler):
                     if log.extra is None:
                         log.extra = {}
                     log.extra.update(data['extra'])
+                    try:
+                        log.extra['internal'] = dict(ip=dev['ip'])
+                    except KeyError:
+                        pass
                     if log.extra.has_key('client'):
                         del log.extra['client']
                 except KeyError,e:
-                    logging.info(str(e))
+                    logging.debug("Process device POST "+str(e))
                     pass
             try:
                 puid = data['extra']['client']['uid']
@@ -718,7 +721,6 @@ class Logging(RequestHandler):
                 for ns in q:
                     clog.extra['locations'].append({'uid':ns.uid,'addresses':ns.internal_addresses})
             except KeyError,e:
-                logging.info(str(e))
                 pass
             values = self.cache.values()
             for log in values:
