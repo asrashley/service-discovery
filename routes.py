@@ -22,6 +22,7 @@ routes = {
     "registered":Route(r'/registered/', handler='views.RegistrationList', parent="home", title="Registered devices"),
     "channel":Route(r'/_ah/channel/<:(dis)?connected>/', handler='views.ChannelHandler', parent="home", title="channel"),
     "logging":Route(r'/logs', handler='views.Logging', parent="home", title="Discovery logs"),
+    "logging-alias":Route(r'/log/', handler='views.Logging', parent="home", title="Discovery logs"),
     "logging-q":Route(r'/logs/q/<q:>', handler='views.Logging', parent="home", title="Discovery logs"),
     "logging-id":Route(r'/logs/id/<id:>', handler='views.Logging', parent="home", title="Discovery logs"),
     "logging-date":Route(r'/logs/date/<date:>', handler='views.Logging', parent="home", title="Discovery logs"),
