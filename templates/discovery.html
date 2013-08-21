@@ -15,7 +15,16 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="text/javascript">
+(function(){
+    var ss;
 		{% for srv in services %}
-        <link rel="stylesheet" href="http://{{srv.address}}:{{srv.port}}/{{srv.path}}/{{srv.uid}}.css" />
+		ss = document.createElement("link");
+        ss.type = "text/css";
+        ss.rel = "stylesheet";
+        ss.href = "http://{{srv.address}}:{{srv.port}}/{{srv.path}}/{{srv.uid}}.css";
+        document.getElementsByTagName("head")[0].appendChild(ss);
 		{% endfor %}
+})(this);
+</script>
 {% endblock %}
