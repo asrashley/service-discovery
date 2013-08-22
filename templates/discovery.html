@@ -1,30 +1,39 @@
 {% extends 'layout.html' %}
 
 {% block extraheaders %}
+<noscript>
+    {% for srv in services %}
+    <link rel="stylesheet" href="http://{{srv.address}}:{{srv.port}}/{{srv.path}}/{{srv.uid}}.css" />
+    {% endfor %}
+</noscript>
 {% endblock %}
 
 {% block content %}
 <div id="buttons" data-remote-addr="{{remote_addr}}">
-		{% for srv in services %}
-			<p class="button servicelocation" id="uid{{srv.uid}}" data-address="{{srv.address}}"><a data-uid="{{srv.uid}}" href="http://{{srv.address}}:{{srv.port}}/{{srv.path}}"><span class="friendlyname"></span><span class="uid">{{srv.uid}}</span></a></p>
-		{% else %}
-		<h1>Unable to find any services on your local network</h1>
-        {% endfor %}
-		<p class="button"><a href="{{request_uri}}">Refresh</a></p>
+    {% for srv in services %}
+    <p class="button servicelocation" id="uid{{srv.uid}}" data-address="{{srv.address}}">
+        <a data-uid="{{srv.uid}}" href="http://{{srv.address}}:{{srv.port}}/{{srv.path}}"><span class="friendlyname"></span><span class="uid">{{srv.uid}}</span></a>
+    </p>
+    {% else %}
+    <h1>Unable to find any services on your local network</h1>
+    {% endfor %}
+    <p class="button">
+        <a href="{{request_uri}}">Refresh</a>
+    </p>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script type="text/javascript">
-(function(){
-    var ss;
-		{% for srv in services %}
-		ss = document.createElement("link");
+    (function() {
+        var ss;
+        {% for srv in services %}
+        ss = document.createElement("link");
         ss.type = "text/css";
         ss.rel = "stylesheet";
         ss.href = "http://{{srv.address}}:{{srv.port}}/{{srv.path}}/{{srv.uid}}.css";
         document.getElementsByTagName("head")[0].appendChild(ss);
-		{% endfor %}
-})(this);
+        {% endfor %}
+    })(this);
 </script>
 {% endblock %}
