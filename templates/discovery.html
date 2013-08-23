@@ -24,16 +24,30 @@
 {% endblock %}
 
 {% block scripts %}
+{{ import_script("jquery-1.10.2") }}
 <script type="text/javascript">
-    (function() {
-        var ss;
+$(document).ready(function(){
+   'use strict';
+   var locations = [
         {% for srv in services %}
-        ss = document.createElement("link");
-        ss.type = "text/css";
-        ss.rel = "stylesheet";
-        ss.href = "http://{{srv.address}}:{{srv.port}}/{{srv.path}}/{{srv.uid}}.css";
-        document.getElementsByTagName("head")[0].appendChild(ss);
+        {uid:"{{srv.uid}}", href:"http://{{srv.address}}:{{srv.port}}/{{srv.path}}/{{srv.uid}}.json"},
         {% endfor %}
-    })(this);
+   ];
+
+   function pollLocation(){
+       var loc;
+       if(locations.length){
+            loc = locations.pop();
+            $.getJSON(loc.href,function(data, textStatus, jqXHR){
+                $('#uid'+loc.uid).css('display','block');
+                $('#uid'+loc.uid+' > a').text(data.friendlyName);
+            }).always(function(){
+                setTimeout(pollLocation,10);
+            });
+       }
+   };
+
+   pollLocation();
+});
 </script>
 {% endblock %}
