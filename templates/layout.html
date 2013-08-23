@@ -10,7 +10,7 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         {% if on_production_server %}
-            <link href='http://fonts.googleapis.com/css?family=Comfortaa:700' rel='stylesheet' type='text/css'>
+            <link href='{{http_protocol}}://fonts.googleapis.com/css?family=Comfortaa:700' rel='stylesheet' type='text/css'>
         {% else %}
             <link href='/css/comfortaa.css' rel='stylesheet' type='text/css'>
         {% endif %}

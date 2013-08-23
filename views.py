@@ -47,7 +47,8 @@ class RequestHandler(webapp2.RequestHandler):
                    "title": kwargs.get('title', route.title),
                    "uri_for":self.uri_for,
                    "on_production_server":on_production_server,
-                   "import_script":import_script
+                   "import_script":import_script,
+                   "http_protocol":self.request.host_url.split(':')[0]
                    }
         #parent = app.router.match()
         #(route, args, kwargs)
